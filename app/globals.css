@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 250 250; /* #FAFAFA - Clean Light Gray */
+    --foreground: 17 24 39; /* #111827 - Dark Gray Text */
+    --card: 255 255 255; /* #FFFFFF - White */
+    --card-foreground: 17 24 39; /* #111827 - Dark Gray Text */
+    --popover: 255 255 255;
+    --popover-foreground: 17 24 39;
+    --primary: 37 99 235; /* #2563EB - Modern Tech Blue */
+    --primary-foreground: 255 255 255;
+    --secondary: 243 244 246; /* #F3F4F6 - Light Gray */
+    --secondary-foreground: 17 24 39;
+    --muted: 249 250 251; /* #F9FAFB - Very Light Gray */
+    --muted-foreground: 107 114 128; /* #6B7280 - Medium Gray Text */
+    --accent: 37 99 235; /* #2563EB - Tech Blue */
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68; /* #EF4444 - Red */
+    --destructive-foreground: 255 255 255;
+    --border: 229 231 235; /* #E5E7EB - Light Border */
+    --input: 229 231 235; /* #E5E7EB - Input Border */
+    --ring: 37 99 235; /* #2563EB - Focus Ring */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Hide scrollbar for mobile carousel */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Performance optimizations */
+img {
+  content-visibility: auto;
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2;
+}
+
+/* Blob animation */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Gradient Animation */
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+/* Custom Scrollbar for Summary */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(143, 151, 168, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #2563EB;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #1D4ED8;
+}
+
