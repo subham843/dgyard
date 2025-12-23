@@ -1,35 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Public API - Get all active categories
-// Cache for 1 hour (3600 seconds)
-export const revalidate = 3600;
-
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
       where: {
         active: true,
       },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        icon: true,
+      include: {
         subCategories: {
           where: {
             active: true,
-          },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            description: true,
-            icon: true,
-          },
-          orderBy: {
-            name: "asc",
           },
         },
       },
@@ -38,15 +19,8 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(
-      { categories },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-        },
-      }
-    );
-  } catch (error) {
+    return NextResponse.json({ categories });
+  } catch (error: any) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
       { error: "Failed to fetch categories" },
@@ -54,4 +28,3 @@ export async function GET() {
     );
   }
 }
-

@@ -32,15 +32,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const where: any = { assignedTo: session.user.id };
+    // Get technician profile
+    const technician = await prisma.technician.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!technician) {
+      return NextResponse.json(
+        { error: "Technician profile not found" },
+        { status: 404 }
+      );
+    }
+
+    const where: any = { assignedTechnicianId: technician.id };
     if (status && status !== "all") {
       where.status = status;
     }
 
-    const assignments = await prisma.booking.findMany({
+    const assignments = await prisma.jobPost.findMany({
       where,
       include: {
-        user: {
+        dealer: {
           select: {
             id: true,
             name: true,
@@ -48,9 +60,13 @@ export async function GET(request: Request) {
             phone: true,
           },
         },
-        activityLogs: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
+        technician: {
+          select: {
+            id: true,
+            fullName: true,
+            mobile: true,
+            email: true,
+          },
         },
       },
       orderBy: [
@@ -69,3 +85,7 @@ export async function GET(request: Request) {
     );
   }
 }
+
+
+
+

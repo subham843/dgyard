@@ -24,9 +24,11 @@ const DialogOverlay = React.forwardRef<
       className
     )}
     {...props}
-    onPointerDown={(e) => {
-      // Allow closing on overlay click
-      e.preventDefault();
+    onClick={(e) => {
+      // Allow overlay click to close dialog
+      if (props.onClick) {
+        props.onClick(e);
+      }
     }}
   />
 ));
@@ -45,15 +47,21 @@ const DialogContent = React.forwardRef<
         className
       )}
       onPointerDownOutside={(e) => {
-        // Allow closing on outside click
+        // Allow closing on outside click - don't prevent default
         if (props.onPointerDownOutside) {
           props.onPointerDownOutside(e);
         }
       }}
       onEscapeKeyDown={(e) => {
-        // Allow closing on Escape key
+        // Allow closing on Escape key - don't prevent default
         if (props.onEscapeKeyDown) {
           props.onEscapeKeyDown(e);
+        }
+      }}
+      onInteractOutside={(e) => {
+        // Allow closing on outside interaction
+        if (props.onInteractOutside) {
+          props.onInteractOutside(e);
         }
       }}
       {...props}

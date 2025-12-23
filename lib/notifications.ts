@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email";
 export interface NotificationData {
   userId: string;
   bookingId?: string;
+  jobId?: string;
   type: string;
   title: string;
   message: string;
@@ -25,6 +26,7 @@ export async function sendNotification(data: NotificationData) {
         data: {
           userId: data.userId,
           bookingId: data.bookingId,
+          jobId: data.jobId,
           type: data.type,
           title: data.title,
           message: data.message,
@@ -111,12 +113,18 @@ export async function getUserNotifications(
     unreadOnly?: boolean;
     limit?: number;
     offset?: number;
+    channel?: string; // Filter by channel (e.g., "IN_APP")
   }
 ) {
   try {
     const where: any = { userId };
     if (options?.unreadOnly) {
-      where.status = { not: "READ" };
+      // Unread notifications are those where readAt is null
+      where.readAt = null;
+    }
+    // Filter by channel if specified (for IN_APP notifications)
+    if (options?.channel) {
+      where.channel = options.channel;
     }
 
     const notifications = await prisma.notification.findMany({
@@ -131,6 +139,14 @@ export async function getUserNotifications(
             bookingNumber: true,
             status: true,
             serviceType: true,
+          },
+        },
+        job: {
+          select: {
+            id: true,
+            jobNumber: true,
+            title: true,
+            status: true,
           },
         },
       },

@@ -14,6 +14,8 @@ enum UserRole {
   USER
   ADMIN
   MODERATOR
+  DEALER
+  TECHNICIAN
 }
 
 enum OrderStatus {
@@ -31,6 +33,15 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum RefundStatus {
+  NONE
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
 }
 
 enum ServiceType {
@@ -96,6 +107,182 @@ model User {
   cart      CartItem[]
   aiConversations AIConversation[]
   quotations Quotation[]
+  dealer Dealer?
+  technicianProfile Technician?
+  jobPosts JobPost[] @relation("DealerJobs")
+  jobPayments JobPayment[] @relation("DealerPayments")
+  notifications Notification[]
+  dealerCommissionOverrides ServiceCommission[] @relation("DealerCommissionOverrides")
+  createdServiceCommissions ServiceCommission[] @relation("CommissionCreators")
+  createdProductCommissions ProductCommission[] @relation("ProductCommissionCreators")
+  createdMarginRules MinimumMarginRule[] @relation("MarginRuleCreators")
+  jobReviewsAsReviewer JobReview[] @relation("JobReviewer")
+}
+
+enum DealerAccountStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum CoverageType {
+  RADIUS_BASED
+  CITY_WIDE
+  STATE_WIDE
+  NATIONAL
+}
+
+model Dealer {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @unique @db.ObjectId
+  
+  // Basic Info
+  fullName      String
+  businessName  String
+  dealerType    String?
+  email         String
+  mobile        String
+  accountStatus DealerAccountStatus @default(PENDING_APPROVAL)
+  
+  // Business Details
+  addressLine   String?
+  city          String?
+  district      String?
+  state         String?
+  pincode       String?
+  yearsOfExperience Int?
+  servicesOffered String[] // Array of services
+  
+  // Operating Area (Map + Radius)
+  latitude      Float?
+  longitude     Float?
+  placeName     String?
+  serviceRadiusKm Float?
+  coverageType  CoverageType @default(RADIUS_BASED)
+  
+  // Team & Capacity
+  hasInHouseTechnicians Boolean @default(false)
+  monthlyOrderCapacityRange String?
+  
+  // Brand Experience
+  preferredBrands String[] // Array of brand names
+  
+  // Meta & System Fields
+  isKycCompleted Boolean @default(false)
+  isBankDetailsCompleted Boolean @default(false)
+  freeTrialServices Int? // Number of free trial services granted
+  trustScore     Int     @default(100) // Trust score (0-100), decreases with repeated rejections
+  rejectedJobsCount Int   @default(0) // Count of permanently rejected jobs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([accountStatus])
+  @@index([email])
+  @@index([mobile])
+}
+
+enum TechnicianAccountStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum TechnicianType {
+  INDIVIDUAL
+  FREELANCE
+  COMPANY_TECHNICIAN
+}
+
+enum WorkingDays {
+  WEEKDAYS
+  WEEKENDS
+  BOTH
+}
+
+enum DailyAvailability {
+  FULL_DAY
+  HALF_DAY
+  ON_CALL
+}
+
+enum VehicleType {
+  BIKE
+  CAR
+  NONE
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Technician {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @unique @db.ObjectId
+  
+  // Basic Info
+  fullName      String
+  displayName   String?
+  email         String
+  mobile        String
+  technicianType TechnicianType
+  accountStatus TechnicianAccountStatus @default(PENDING_APPROVAL)
+  
+  // Professional Details
+  yearsOfExperience Int?
+  primarySkills     Json? // Array of objects: [{skill: "Skill Name", level: "BEGINNER"|"INTERMEDIATE"|"ADVANCED"}]
+  secondarySkills   String[] // Array of secondary skills
+  serviceCategories String[] // Array of service categories (e.g., CCTV Installation, IP Camera Setup, etc.)
+  
+  // Operating Area (Map + Radius)
+  latitude      Float?
+  longitude     Float?
+  placeName     String?
+  serviceRadiusKm Float?
+  
+  // Availability & Work Preferences
+  availableForInstallation Boolean @default(false)
+  availableForMaintenance  Boolean @default(false)
+  availableForEmergencyCalls Boolean @default(false)
+  workingDays   WorkingDays?
+  dailyAvailability DailyAvailability?
+  
+  // Tools & Transport
+  ownToolsAvailable Boolean @default(false)
+  ownVehicle VehicleType @default(NONE)
+  
+  // Experience Proof (Optional at Signup)
+  previousWorkDescription String?
+  pastProjectImages String[] // Array of image URLs (optional, upload later)
+  
+  // Meta & System Fields
+  isKycCompleted Boolean @default(false)
+  isBankDetailsCompleted Boolean @default(false)
+  rating        Float    @default(0)
+  totalJobs     Int      @default(0)
+  completedJobs Int      @default(0)
+  isOnline      Boolean  @default(true) // Availability status
+  freeTrialUsed Int      @default(0) // Number of free trial jobs used
+  freeTrialRemaining Int @default(0) // Number of free trial jobs remaining
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedJobs JobPost[]
+  jobBids JobBid[]
+  warrantyReworks Warranty[] @relation("WarrantyReworks")
+  
+  @@index([accountStatus])
+  @@index([email])
+  @@index([mobile])
 }
 
 model Account {
@@ -171,6 +358,7 @@ model Category {
   powerSupplyCameraTypes               QuotationPowerSupplySetting[] @relation("PowerSupplyCameraType")
   accessoriesCameraTypes               QuotationAccessoriesSetting[] @relation("AccessoriesCameraType")
   bitrateCameraTypes                   QuotationBitrateSetting[] @relation("BitrateCameraType")
+  productCommissions                   ProductCommission[]
 }
 
 model SubCategory {
@@ -191,6 +379,7 @@ model SubCategory {
   quotationHddSettings           QuotationHddSetting[]
   quotationRecordingDeviceSettings QuotationRecordingDeviceSetting[]
   quotationPowerSupplySettings   QuotationPowerSupplySetting[]
+  productCommissions             ProductCommission[]
 
   @@unique([slug, categoryId])
   @@index([categoryId])
@@ -335,6 +524,23 @@ model Order {
   razorpaySignature String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+  
+  // Cancellation & Refund Tracking (Payment-Gateway Independent)
+  orderPlacedAt           DateTime?  @default(now()) // When order was placed
+  cancelRequestedAt       DateTime?  // When cancellation was requested
+  cancelApprovedAt        DateTime?  // When cancellation was approved
+  refundRequestedAt       DateTime?  // When refund was requested
+  refundApprovedAt        DateTime?  // When refund was approved
+  refundStatus            RefundStatus @default(NONE)
+  paymentMethod           String?      // UPI, CARD, NET_BANKING, WALLET, CASH, etc.
+  refundMethod            String?      // Original payment method or INTERNAL_WALLET
+  technicianAssignedAt    DateTime?    // For service orders - when technician was assigned
+  workStartedAt           DateTime?    // For service orders - when work started
+  deliveryAt              DateTime?    // When order was delivered
+  damagedProductReportedAt DateTime?  // When damaged/incorrect product was reported
+  cancellationReason      String?     // Reason for cancellation
+  refundReason            String?     // Reason for refund request
+  adminNotes              String?     // Admin notes for cancellation/refund
 
   user    User        @relation(fields: [userId], references: [id])
   address Address     @relation(fields: [addressId], references: [id])
@@ -378,8 +584,24 @@ model Booking {
   actualCost   Float?         // Actual cost after completion
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  
+  // Cancellation & Refund Tracking (Payment-Gateway Independent)
+  bookingPlacedAt        DateTime?  @default(now()) // When booking was placed
+  cancelRequestedAt       DateTime?  // When cancellation was requested
+  cancelApprovedAt        DateTime?  // When cancellation was approved
+  refundRequestedAt       DateTime?  // When refund was requested
+  refundApprovedAt        DateTime?  // When refund was approved
+  refundStatus            RefundStatus @default(NONE)
+  paymentMethod           String?      // UPI, CARD, NET_BANKING, WALLET, CASH, etc.
+  refundMethod            String?      // Original payment method or INTERNAL_WALLET
+  technicianAssignedAt    DateTime?    // When technician was assigned (from JobPost)
+  workStartedAt           DateTime?    // When work started
+  cancellationReason      String?     // Reason for cancellation
+  refundReason            String?     // Reason for refund request
+  adminNotes              String?     // Admin notes for cancellation/refund
 
   user User @relation(fields: [userId], references: [id])
+  notifications Notification[]
   
   @@index([status])
   @@index([serviceType])
@@ -891,4 +1113,924 @@ model Lead {
   @@index([status])
   @@index([source])
   @@index([createdAt])
+}
+
+model ServiceCategory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  title             String   @unique
+  shortDescription  String?
+  warrantyDays      Int?     // Service warranty period in days
+  active            Boolean  @default(true)
+  order             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  serviceSubCategories ServiceSubCategory[]
+  serviceCommissions ServiceCommission[]
+
+  @@index([active])
+  @@index([order])
+}
+
+model ServiceSubCategory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  title             String
+  shortDescription  String?
+  serviceCategoryId String   @db.ObjectId
+  warrantyDays      Int?     // Service warranty period in days (overrides category warranty if set)
+  active            Boolean  @default(true)
+  order             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  serviceCategory   ServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+  serviceDomainSubCategories ServiceDomainSubCategory[]
+  serviceCommissions ServiceCommission[]
+
+  @@index([serviceCategoryId])
+  @@index([active])
+  @@index([order])
+}
+
+model ServiceDomain {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  title             String   @unique
+  shortDescription  String?
+  active            Boolean  @default(true)
+  order             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  serviceSubCategories ServiceDomainSubCategory[]
+  skills            Skill[]
+
+  @@index([active])
+  @@index([order])
+}
+
+model ServiceDomainSubCategory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  serviceDomainId   String   @db.ObjectId
+  serviceSubCategoryId String   @db.ObjectId
+
+  serviceDomain     ServiceDomain @relation(fields: [serviceDomainId], references: [id], onDelete: Cascade)
+  serviceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceDomainId, serviceSubCategoryId])
+  @@index([serviceDomainId])
+  @@index([serviceSubCategoryId])
+}
+
+model Skill {
+  id                String      @id @default(auto()) @map("_id") @db.ObjectId
+  title             String
+  shortDescription  String?
+  serviceDomainId   String      @db.ObjectId
+  active            Boolean      @default(true)
+  order             Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  serviceDomain    ServiceDomain   @relation(fields: [serviceDomainId], references: [id], onDelete: Cascade)
+
+  @@unique([title, serviceDomainId])
+  @@index([serviceDomainId])
+  @@index([active])
+  @@index([order])
+}
+
+enum JobStatus {
+  PENDING                    // Job created/broadcasted, visible to technicians
+  SOFT_LOCKED               // First technician accepted, waiting for dealer confirmation (30-60 sec)
+  WAITING_FOR_PAYMENT       // Technician accepted, waiting for dealer payment
+  ASSIGNED                  // Payment locked, job assigned to technician
+  IN_PROGRESS               // Work started
+  COMPLETION_PENDING_APPROVAL // Work completed, waiting for approval
+  COMPLETED                 // Approved, payment split done
+  CANCELLED                 // Cancelled (with reason and penalty)
+  NEGOTIATION_PENDING       // Bid placed, waiting for dealer response
+}
+
+model JobPost {
+  id                String      @id @default(auto()) @map("_id") @db.ObjectId
+  jobNumber         String      @unique
+  
+  // Dealer Information
+  dealerId          String      @db.ObjectId
+  dealerName        String
+  dealerPhone       String
+  dealerEmail       String
+  
+  // Job Details
+  title             String
+  description       String
+  workDetails       String      // Detailed work description
+  
+  // Customer Information
+  customerName      String
+  customerPhone     String
+  customerEmail     String?
+  
+  // Location Information
+  address           String
+  city              String
+  state             String
+  pincode           String
+  latitude          Float?
+  longitude         Float?
+  placeName         String?
+  
+  // Skills & Service Selection
+  serviceCategoryId    String      @db.ObjectId
+  serviceSubCategoryId String      @db.ObjectId
+  serviceDomainId      String      @db.ObjectId
+  skillId              String?     @db.ObjectId
+  
+  // Assigned Technician
+  assignedTechnicianId String?     @db.ObjectId
+  assignedAt          DateTime?
+  
+  // Job Status
+  status            JobStatus   @default(PENDING)
+  
+  // Soft Lock (FCFS mechanism)
+  softLockedAt      DateTime?   // When job was soft-locked by first technician
+  softLockExpiresAt DateTime?   // When soft lock expires (30-60 sec)
+  softLockedByTechnicianId String? @db.ObjectId // Technician who soft-locked
+  
+  // Payment & Deadlines
+  paymentDeadlineAt DateTime?   // Deadline for dealer payment after accept
+  
+  // Re-circulation tracking
+  rejectedTechnicianIds String[]  // Array of technician IDs who rejected this job
+  lastRejectedAt      DateTime?   // Last rejection timestamp
+  reCirculationCount  Int         @default(0) // How many times job was re-circulated
+  
+  // Repost & Rejection tracking
+  repostCount         Int         @default(0) // Number of times job was reposted
+  maxReposts          Int         @default(3) // Maximum allowed reposts (default 3)
+  rejectedAt          DateTime?   // When job was permanently rejected
+  rejectionReason     String?     // Reason for permanent rejection
+  rejectionDetails    Json?       // Detailed rejection info: {reason: string, timeoutReasons: string[], repostCount: number}
+  timeoutReasons      String[]    // Array of timeout reasons: ["SOFT_LOCK_TIMEOUT", "PAYMENT_DEADLINE_TIMEOUT", "NEGOTIATION_TIMEOUT"]
+  
+  // Bidding & Negotiation
+  allowBargaining   Boolean     @default(true)
+  finalPrice        Float?      // Locked price after negotiation
+  priceLocked       Boolean     @default(false)
+  negotiationRounds Int         @default(0) // Track negotiation rounds (max 2)
+  
+  // OTP for Job Completion
+  completionOtp     String?
+  otpExpiresAt      DateTime?
+  otpVerifiedAt     DateTime?
+  
+  // Warranty Information
+  warrantyDays      Int?        // Warranty period in days
+  warrantyStartDate DateTime?   // When warranty starts (usually completion date)
+  
+  // Timestamps
+  scheduledAt       DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?     // Reason for cancellation
+  cancellationPenalty Float?     // Penalty amount if applicable
+  cancelledBy       String?      @db.ObjectId // User ID who cancelled
+  cancelledByRole   String?      // Role of user who cancelled (DEALER, TECHNICIAN, ADMIN)
+  
+  // Additional Information
+  priority          String      @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  estimatedDuration Int?        // in hours
+  estimatedCost     Float?
+  actualCost        Float?
+  notes             String?
+  
+  // Work Proof & Evidence
+  beforePhotos      String[]    // Array of photo URLs (before work)
+  afterPhotos       String[]    // Array of photo URLs (after work)
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  dealer            User        @relation("DealerJobs", fields: [dealerId], references: [id], onDelete: Cascade)
+  technician        Technician? @relation(fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+  bids              JobBid[]
+  warranties        Warranty[]
+  payments          JobPayment[]
+  warrantyHolds     WarrantyHold[]
+  disputes          Dispute[]
+  notifications     Notification[]
+  ledgerEntries     LedgerEntry[]
+  
+  @@index([dealerId])
+  @@index([assignedTechnicianId])
+  @@index([status])
+  @@index([serviceCategoryId])
+  @@index([serviceSubCategoryId])
+  @@index([serviceDomainId])
+  @@index([city])
+  @@index([pincode])
+  @@index([createdAt])
+  
+  // Relations
+  jobReviews        JobReview[]
+}
+
+// Job Review Model - For job-specific reviews between users
+enum ReviewType {
+  CUSTOMER_TO_DEALER
+  CUSTOMER_TO_TECHNICIAN
+  DEALER_TO_TECHNICIAN
+  TECHNICIAN_TO_DEALER
+}
+
+model JobReview {
+  id                String      @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String      @db.ObjectId
+  
+  // Review Type
+  reviewType        ReviewType
+  
+  // Reviewer (who is giving the review)
+  reviewerId        String      @db.ObjectId  // User ID
+  reviewerRole      UserRole    // Role of reviewer (USER, DEALER, TECHNICIAN)
+  
+  // Reviewee (who is being reviewed)
+  revieweeId        String      @db.ObjectId  // User ID or Technician ID
+  revieweeType      String      // "USER" | "DEALER" | "TECHNICIAN"
+  
+  // Review Content
+  rating            Int         // 1-5 stars
+  comment           String?     // Optional comment
+  
+  // OTP Verification (for customer reviews)
+  otpVerified       Boolean     @default(false)
+  otpUsed           String?     // OTP that was used
+  
+  // Review Status
+  isLocked          Boolean     @default(false) // Locked after submission (no edit/delete)
+  isHidden          Boolean     @default(false) // Admin can hide abusive reviews
+  isFlagged         Boolean     @default(false) // AI flagged as suspicious
+  
+  // AI Analysis
+  aiConfidenceScore Float?      // 0-1 confidence score for review authenticity
+  aiFlags           String[]    // Array of AI-detected flags (e.g., "revenge_rating", "fake_pattern")
+  
+  // Admin Actions
+  hiddenBy          String?     @db.ObjectId // Admin user ID who hid it
+  hiddenAt          DateTime?
+  hiddenReason      String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  job               JobPost     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reviewer          User        @relation("JobReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  
+  @@unique([jobId, reviewType, reviewerId]) // One review per type per reviewer per job
+  @@index([jobId])
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@index([reviewType])
+  @@index([isLocked])
+  @@index([isHidden])
+  @@index([isFlagged])
+  @@index([createdAt])
+}
+
+// Job Bidding & Negotiation Model
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+}
+
+model JobBid {
+  id                String      @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String      @db.ObjectId
+  technicianId      String      @db.ObjectId
+  
+  // Bid Details
+  offeredPrice      Float
+  message           String?     // Optional message from technician
+  status            BidStatus    @default(PENDING)
+  
+  // Negotiation Tracking
+  isCounterOffer    Boolean     @default(false) // True if this is a counter-offer
+  roundNumber       Int         @default(1) // 1 or 2 (max 2 rounds)
+  previousBidId     String?     @db.ObjectId // Link to previous bid if counter-offer
+  
+  // Timeout & Expiry
+  expiresAt         DateTime?   // When bid expires (5 minutes for negotiation)
+  autoRejectedAt    DateTime?   // When bid was auto-rejected due to timeout
+  
+  // Distance & Rating Info (snapshot at bid time)
+  distanceKm        Float?      // Distance from technician to job location
+  technicianRating  Float?      // Technician rating at bid time
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  job               JobPost     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  technician        Technician  @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  previousBid       JobBid?      @relation("BidCounterOffers", fields: [previousBidId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  counterOffers     JobBid[]     @relation("BidCounterOffers")
+  
+  @@index([jobId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Warranty & Rework Management Model
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRED
+  ISSUE_REPORTED
+  REWORK_IN_PROGRESS
+  REWORK_COMPLETED
+  CLOSED
+}
+
+model Warranty {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String          @db.ObjectId
+  
+  // Warranty Details
+  warrantyDays      Int             // Warranty period in days
+  startDate         DateTime         // When warranty starts
+  endDate            DateTime         // When warranty expires
+  status            WarrantyStatus   @default(ACTIVE)
+  
+  // Issue Reporting
+  issueReportedAt   DateTime?
+  issueDescription  String?
+  reportedBy        String?         // "DEALER" | "CUSTOMER"
+  
+  // Rework Information
+  reworkAssignedTo  String?         @db.ObjectId // Technician ID for rework
+  reworkStartedAt   DateTime?
+  reworkCompletedAt DateTime?
+  reworkNotes       String?
+  
+  // Admin Escalation
+  escalatedToAdmin  Boolean         @default(false)
+  escalationReason  String?
+  escalationDate    DateTime?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  job               JobPost         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reworkTechnician  Technician?      @relation("WarrantyReworks", fields: [reworkAssignedTo], references: [id], onDelete: SetNull)
+  
+  @@index([jobId])
+  @@index([status])
+  @@index([endDate])
+  @@index([createdAt])
+}
+
+// Job Payment & Commission Model
+enum JobPaymentStatus {
+  PENDING
+  ESCROW_HOLD       // Amount held in escrow
+  COMMISSION_DEDUCTED
+  RELEASED
+  REFUNDED
+}
+
+enum PaymentType {
+  SERVICE_PAYMENT
+  WARRANTY_HOLD
+  COMMISSION
+  REFUND
+}
+
+enum PaymentMethod {
+  ONLINE          // Via platform gateway (Razorpay)
+  CASH            // Cash payment (declared, proof required)
+  BANK_TRANSFER   // Direct bank transfer
+  OTHER           // Other payment method
+}
+
+model JobPayment {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String          @db.ObjectId
+  dealerId          String          @db.ObjectId
+  technicianId      String?         @db.ObjectId // Technician receiving payment
+  
+  // Payment Details
+  totalAmount       Float           // Total job amount
+  immediateAmount   Float           // Amount to be paid immediately
+  warrantyHoldAmount Float          // Amount held for warranty
+  holdPercentage    Float           // Hold percentage (e.g., 20.0 for 20%)
+  amount            Float           // For backward compatibility - same as immediateAmount
+  paymentType       PaymentType
+  paymentMethod     PaymentMethod   @default(ONLINE)
+  status            JobPaymentStatus   @default(PENDING)
+  
+  // Commission Information
+  commissionRate    Float?          // Commission percentage (e.g., 5.0 for 5%)
+  commissionAmount  Float?           // Calculated commission amount
+  netAmount         Float?           // Amount after commission (immediateAmount - commissionAmount)
+  
+  // Escrow & Hold Information
+  isWarrantyHold    Boolean         @default(false)
+  warrantyHoldDays  Int?            // Days to hold warranty amount
+  warrantyHoldReleaseDate DateTime? // When warranty hold will be released
+  
+  // Payment Tracking
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paymentProof      String?         // For cash payments - proof image/document URL
+  paidAt            DateTime?
+  releasedAt        DateTime?
+  
+  // Cash Payment Control
+  isCashPayment     Boolean         @default(false)
+  cashProofUrl      String?         // Proof of cash payment
+  
+  // Notes
+  notes             String?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  job               JobPost         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  dealer            User            @relation("DealerPayments", fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  @@index([jobId])
+  @@index([dealerId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([paymentType])
+  @@index([createdAt])
+}
+
+// Dispute Management Model
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum DisputeType {
+  QUALITY_ISSUE
+  PRICING_DISPUTE
+  TECHNICIAN_BEHAVIOR
+  WARRANTY_CLAIM
+  PAYMENT_DISPUTE
+  OTHER
+}
+
+model Dispute {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String          @db.ObjectId
+  raisedBy          String          @db.ObjectId // User ID who raised dispute
+  raisedByRole      String          // "DEALER" | "TECHNICIAN" | "CUSTOMER"
+  
+  // Dispute Details
+  type              DisputeType
+  title             String
+  description       String
+  status            DisputeStatus   @default(OPEN)
+  
+  // Evidence
+  evidenceUrls      String[]        // Array of image/document URLs
+  
+  // Resolution
+  resolvedBy        String?         @db.ObjectId // Admin user ID
+  resolutionNotes   String?
+  resolvedAt        DateTime?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  job               JobPost         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@index([jobId])
+  @@index([raisedBy])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Notification Model (for in-app notifications)
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+enum NotificationType {
+  JOB_BID_RECEIVED
+  JOB_BID_ACCEPTED
+  JOB_BID_REJECTED
+  JOB_COUNTER_OFFER
+  JOB_ACCEPTED
+  TECHNICIAN_ON_WAY
+  JOB_STARTED
+  OTP_REQUESTED
+  JOB_COMPLETED
+  WARRANTY_EXPIRING
+  WARRANTY_ISSUE_REPORTED
+  DISPUTE_RAISED
+  DISPUTE_UPDATED
+  PAYMENT_PENDING
+  PAYMENT_RELEASED
+  WARRANTY_HOLD_RELEASED
+}
+
+model Notification {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String              @db.ObjectId
+  jobId             String?             @db.ObjectId
+  bookingId         String?             @db.ObjectId
+  
+  // Notification Details
+  type              NotificationType
+  title             String
+  message           String
+  channel           String              // "EMAIL" | "SMS" | "WHATSAPP" | "IN_APP"
+  status            NotificationStatus  @default(PENDING)
+  
+  // Metadata
+  metadata          Json?               // Additional data (e.g., bid details, payment info)
+  
+  // Tracking
+  readAt            DateTime?
+  sentAt            DateTime?
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job               JobPost?            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  booking           Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([jobId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Ledger-Based Wallet System (Internal Accounting)
+enum LedgerAccountType {
+  TECHNICIAN_PAYABLE    // Amount owed to technician
+  DEALER_RECEIVABLE     // Amount dealer owes
+  DEALER_WALLET         // Dealer's wallet balance (money available)
+  WARRANTY_HOLD         // Warranty hold account
+  PLATFORM_COMMISSION   // Platform commission account
+  CASH_HOLD             // Cash payment hold (for verification)
+  ESCROW                // Escrow account (locked payments)
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerEntryCategory {
+  JOB_PAYMENT          // Job payment split
+  WARRANTY_HOLD        // Warranty hold creation/release
+  COMMISSION           // Commission deduction
+  WITHDRAWAL           // Technician withdrawal
+  REFUND               // Refund processing
+  ADJUSTMENT           // Manual adjustment by admin
+  CASH_PAYMENT         // Cash payment recording
+}
+
+model LedgerAccount {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?         @db.ObjectId // User ID (technician, dealer, etc.)
+  jobId             String?         @db.ObjectId // Job ID this account is linked to
+  accountType       LedgerAccountType
+  accountName       String          // Human-readable account name
+  balance           Float           @default(0) // Current balance (always job-linked)
+  
+  // Metadata
+  metadata          Json?           // Additional account metadata
+  isActive          Boolean         @default(true)
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  entries           LedgerEntry[]
+  
+  // Note: MongoDB doesn't support compound unique indexes with null values well
+  // We use application-level uniqueness checks instead
+  // @@unique([userId, jobId, accountType])
+  @@index([userId])
+  @@index([jobId])
+  @@index([accountType])
+  @@index([isActive])
+}
+
+model LedgerEntry {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  accountId         String          @db.ObjectId
+  jobId             String          @db.ObjectId // Always linked to a job
+  entryType         LedgerEntryType // DEBIT or CREDIT
+  amount            Float
+  category          LedgerEntryCategory
+  description       String
+  
+  // Reference to related transactions
+  paymentId         String?         @db.ObjectId // JobPayment ID
+  warrantyHoldId    String?         @db.ObjectId // WarrantyHold ID
+  withdrawalId      String?         @db.ObjectId // Withdrawal ID
+  auditLogId        String?         @db.ObjectId // AuditLog ID
+  
+  // Balancing entry (for double-entry)
+  counterEntryId    String?         @unique @db.ObjectId // Reference to the balancing entry (unique for one-to-one relation)
+  
+  // Metadata
+  metadata          Json?           // Additional entry metadata
+  createdBy         String?         @db.ObjectId // User ID who created (for admin adjustments)
+  
+  createdAt         DateTime        @default(now())
+  
+  // Relations
+  account           LedgerAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  job               JobPost         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  counterEntry      LedgerEntry?    @relation("DoubleEntry", fields: [counterEntryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reverseCounterEntry LedgerEntry?  @relation("DoubleEntry")
+  
+  @@index([accountId])
+  @@index([jobId])
+  @@index([category])
+  @@index([entryType])
+  @@index([createdAt])
+  @@index([paymentId])
+  @@index([warrantyHoldId])
+}
+
+// Warranty Hold Management
+enum WarrantyHoldStatus {
+  LOCKED           // Normal hold status
+  RELEASED         // Hold released to technician
+  FROZEN           // Hold frozen due to complaint
+  FORFEITED        // Hold forfeited to dealer/refunded
+}
+
+model WarrantyHold {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String              @db.ObjectId
+  technicianId      String              @db.ObjectId
+  dealerId          String              @db.ObjectId
+  
+  // Hold Details
+  holdAmount        Float               // Amount being held
+  holdPercentage    Float               // Hold percentage
+  warrantyDays      Int                 // Warranty period in days
+  startDate         DateTime            // When warranty started (job approval)
+  endDate           DateTime            // When warranty expires (auto-release date)
+  status            WarrantyHoldStatus  @default(LOCKED)
+  
+  // Complaint & Freeze Information
+  isFrozen          Boolean             @default(false)
+  frozenAt          DateTime?
+  freezeReason      String?             // Reason for freeze (complaint, etc.)
+  frozenBy          String?             @db.ObjectId // User ID who froze
+  
+  // Release Information
+  releasedAt        DateTime?
+  releasedBy        String?             @db.ObjectId // User ID who released (admin/auto)
+  releaseReason     String?             // Reason for release
+  
+  // Forfeit Information
+  forfeitedAt       DateTime?
+  forfeitedBy       String?             @db.ObjectId
+  forfeitReason     String?             // Reason for forfeit
+  
+  // Timer Information (for pause/resume)
+  pausedDuration    Int                 @default(0) // Total paused time in seconds
+  lastPausedAt      DateTime?           // When timer was last paused
+  effectiveEndDate  DateTime            // Actual end date considering pauses
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  job               JobPost             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@index([jobId])
+  @@index([technicianId])
+  @@index([dealerId])
+  @@index([status])
+  @@index([endDate])
+  @@index([effectiveEndDate])
+  @@index([createdAt])
+}
+
+// Withdrawal Management
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  FAILED
+}
+
+model Withdrawal {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  technicianId      String              @db.ObjectId
+  jobId             String              @db.ObjectId // Job from which withdrawal is made
+  
+  // Withdrawal Details
+  amount            Float
+  status            WithdrawalStatus    @default(PENDING)
+  
+  // Bank Details
+  bankAccountNumber String
+  bankIFSC          String
+  bankName          String
+  accountHolderName String
+  
+  // Processing Information
+  approvedBy        String?             @db.ObjectId // Admin who approved
+  approvedAt        DateTime?
+  processedAt       DateTime?
+  transactionId     String?             // External transaction ID
+  failureReason     String?
+  
+  // Notes
+  notes             String?
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([technicianId])
+  @@index([jobId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Audit Log for Financial Actions
+enum AuditLogAction {
+  PAYMENT_CREATED
+  PAYMENT_SPLIT
+  WARRANTY_HOLD_CREATED
+  WARRANTY_HOLD_RELEASED
+  WARRANTY_HOLD_FROZEN
+  WARRANTY_HOLD_FORFEITED
+  WITHDRAWAL_CREATED
+  WITHDRAWAL_APPROVED
+  WITHDRAWAL_REJECTED
+  LEDGER_ADJUSTMENT
+  DISPUTE_RESOLUTION
+  ADMIN_OVERRIDE
+}
+
+model AuditLog {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  jobId             String?             @db.ObjectId
+  userId            String?             @db.ObjectId // User who performed action
+  userRole          String              // Role of user (ADMIN, SYSTEM, AI)
+  
+  // Action Details
+  action            AuditLogAction
+  description       String
+  previousValue     Json?               // Previous state (for changes)
+  newValue          Json?               // New state (for changes)
+  amount            Float?              // Amount involved (if applicable)
+  
+  // Reference IDs
+  paymentId         String?             @db.ObjectId
+  warrantyHoldId    String?             @db.ObjectId
+  withdrawalId      String?             @db.ObjectId
+  ledgerEntryId     String?             @db.ObjectId
+  
+  // Metadata
+  metadata          Json?               // Additional audit data
+  ipAddress         String?
+  userAgent         String?
+  
+  createdAt         DateTime            @default(now())
+  
+  @@index([jobId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Platform Commission Configuration Models
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum JobType {
+  INSTALL
+  REPAIR
+  AMC
+  CCTV
+  NETWORKING
+  DIGITAL_MARKETING
+  MAINTENANCE
+  CONSULTATION
+  DEMO
+  UPGRADE
+  AUDIT
+  TRAINING
+}
+
+model ServiceCommission {
+  id                    String          @id @default(auto()) @map("_id") @db.ObjectId
+  commissionType        CommissionType  @default(PERCENTAGE)
+  commissionValue       Float           // Percentage (e.g., 10.0) or Fixed amount (e.g., 299.0)
+  jobType               JobType?        // Specific job type (null = applies to all)
+  city                  String?         // City override (null = applies to all)
+  region                String?         // Region override (null = applies to all)
+  dealerId              String?         @db.ObjectId // Dealer-specific override (null = default)
+  serviceCategoryId     String?         @db.ObjectId // Service category-specific override (null = applies to all)
+  serviceSubCategoryId  String?         @db.ObjectId // Service sub category-specific override (null = applies to all)
+  effectiveFrom         DateTime        @default(now())
+  effectiveTo           DateTime?      // null = active indefinitely
+  isActive              Boolean         @default(true)
+  createdBy             String          @db.ObjectId // Admin user ID
+  notes                 String?
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  
+  // Relations
+  dealer                User?           @relation("DealerCommissionOverrides", fields: [dealerId], references: [id], onDelete: Cascade)
+  creator               User            @relation("CommissionCreators", fields: [createdBy], references: [id], onDelete: Cascade)
+  serviceCategory       ServiceCategory? @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+  serviceSubCategory    ServiceSubCategory? @relation(fields: [serviceSubCategoryId], references: [id], onDelete: Cascade)
+  
+  @@index([jobType])
+  @@index([dealerId])
+  @@index([isActive])
+  @@index([effectiveFrom])
+  @@index([serviceCategoryId])
+  @@index([serviceSubCategoryId])
+}
+
+model ProductCommission {
+  id                    String          @id @default(auto()) @map("_id") @db.ObjectId
+  commissionPercentage  Float           // Product commission % (e.g., 10.0 for 10%)
+  categoryId            String?         @db.ObjectId // Category-specific override (null = default)
+  subCategoryId         String?         @db.ObjectId // Subcategory-specific override (null = default)
+  codExtraCharge        Float?          // Extra charge for COD orders (optional)
+  returnPenaltyPercent  Float?          // Penalty % on returns (optional)
+  effectiveFrom         DateTime        @default(now())
+  effectiveTo           DateTime?       // null = active indefinitely
+  isActive              Boolean         @default(true)
+  createdBy             String          @db.ObjectId // Admin user ID
+  notes                 String?
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  
+  // Relations
+  category              Category?       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subCategory           SubCategory?    @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  creator               User            @relation("ProductCommissionCreators", fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@index([categoryId])
+  @@index([subCategoryId])
+  @@index([isActive])
+  @@index([effectiveFrom])
+}
+
+model MinimumMarginRule {
+  id                    String          @id @default(auto()) @map("_id") @db.ObjectId
+  minimumMarginAmount   Float           // Minimum platform profit required
+  minimumMarginPercent  Float?          // Minimum margin % (optional, alternative to fixed amount)
+  applyToService        Boolean         @default(true)
+  applyToProduct        Boolean         @default(true)
+  requiresApproval      Boolean         @default(true) // If true, bid/order requires admin approval if margin < minimum
+  autoReject            Boolean         @default(false) // If true, automatically reject if margin < minimum
+  effectiveFrom         DateTime        @default(now())
+  effectiveTo           DateTime?      // null = active indefinitely
+  isActive              Boolean         @default(true)
+  createdBy             String          @db.ObjectId // Admin user ID
+  notes                 String?
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  
+  // Relations
+  creator               User            @relation("MarginRuleCreators", fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@index([isActive])
+  @@index([effectiveFrom])
 }

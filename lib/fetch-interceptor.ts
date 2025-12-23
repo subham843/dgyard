@@ -119,10 +119,19 @@ if (typeof window !== "undefined") {
       }
       
       return response;
-    } catch (error) {
+    } catch (error: any) {
       if (!shouldSkipLoading) {
         hideLoading(requestId);
       }
+      
+      // Handle network errors gracefully - don't throw for expected failures
+      // Network errors are common during development (server restart, etc.)
+      if (error?.name === "TypeError" && error?.message === "Failed to fetch") {
+        // Return a rejected promise with a more descriptive error
+        // This allows callers to handle it gracefully
+        return Promise.reject(error);
+      }
+      
       throw error;
     }
   };

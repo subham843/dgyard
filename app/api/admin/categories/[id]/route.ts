@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // GET - Fetch single category
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,8 +14,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const category = await prisma.category.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         subCategories: true,
         products: {
@@ -44,7 +45,7 @@ export async function GET(
 // PATCH - Update category
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -52,6 +53,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const data = await request.json();
     const { name, description, icon, active, enableForQuotation } = data;
 
@@ -69,7 +71,7 @@ export async function PATCH(
     if (enableForQuotation !== undefined) updateData.enableForQuotation = enableForQuotation;
 
     const category = await prisma.category.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 
@@ -98,7 +100,7 @@ export async function PATCH(
 // DELETE - Delete category
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -106,8 +108,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const category = await prisma.category.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         products: { take: 1 },
         subCategories: { take: 1 },
@@ -132,7 +135,7 @@ export async function DELETE(
     }
 
     await prisma.category.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

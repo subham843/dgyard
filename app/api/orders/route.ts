@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         total,
         status: "PENDING",
         paymentStatus: "PENDING",
+        orderPlacedAt: new Date(), // Set order placed timestamp for cancellation tracking
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,

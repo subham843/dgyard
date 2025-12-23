@@ -41,11 +41,34 @@ export function SignInForm() {
         toast.success("Signed in successfully!");
         console.log(`[SignIn] ${new Date().toISOString()} - Login successful, waiting 200ms for session cookie to be set...`);
         
-        // Wait a bit for NextAuth to set the session cookie
-        setTimeout(() => {
-          console.log(`[SignIn] Redirecting to: ${callbackUrl}`);
-          // Use window.location for a full page reload to ensure session is ready
-          window.location.href = callbackUrl;
+        // Wait a bit for NextAuth to set the session cookie, then get user role for redirect
+        setTimeout(async () => {
+          try {
+            // Fetch user role from session
+            const response = await fetch("/api/auth/session");
+            const session = await response.json();
+            const userRole = session?.user?.role;
+            
+            // Role-based redirect
+            let redirectUrl = callbackUrl;
+            if (userRole === "ADMIN") {
+              redirectUrl = "/admin";
+            } else if (userRole === "TECHNICIAN") {
+              redirectUrl = "/technician/dashboard";
+            } else if (userRole === "DEALER") {
+              redirectUrl = "/dealer/dashboard";
+            } else {
+              redirectUrl = "/dashboard";
+            }
+            
+            console.log(`[SignIn] Redirecting to: ${redirectUrl} (Role: ${userRole})`);
+            // Use window.location for a full page reload to ensure session is ready
+            window.location.href = redirectUrl;
+          } catch (error) {
+            console.error("Error getting session:", error);
+            // Fallback to callbackUrl
+            window.location.href = callbackUrl;
+          }
         }, 200);
       } else {
         toast.error("Sign in failed. Please try again.");
@@ -423,12 +446,34 @@ export function SignInForm() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
-              className="text-center text-sm pt-4 border-t border-gray-100"
+              className="text-center space-y-3 pt-4 border-t border-gray-100"
             >
-              <span className="text-gray-600 font-serif">Don't have an account? </span>
-              <Link href="/auth/signup" className="text-blue-600 font-semibold hover:text-blue-800 hover:underline transition-colors font-serif">
-                Sign Up
-              </Link>
+              <div className="text-sm">
+                <span className="text-gray-600 font-serif">Don't have an account? </span>
+                <Link href="/auth/signup" className="text-blue-600 font-semibold hover:text-blue-800 hover:underline transition-colors font-serif">
+                  Sign Up
+                </Link>
+              </div>
+              
+              {/* Technician & Dealer Registration Links */}
+              <div className="pt-2">
+                <p className="text-xs text-gray-500 mb-2">Are you a Technician or Dealer?</p>
+                <div className="flex gap-3 justify-center text-xs">
+                  <Link 
+                    href="/connect/technician/signup" 
+                    className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                  >
+                    Technician Sign Up
+                  </Link>
+                  <span className="text-gray-400">|</span>
+                  <Link 
+                    href="/technician/register" 
+                    className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                  >
+                    Dealer Sign Up
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           </div>
         </motion.div>

@@ -1,0 +1,36 @@
+import { Metadata } from "next";
+import { AdminLayout } from "@/components/admin/admin-layout";
+import { DealerPerformance } from "@/components/admin/dealer-performance";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Dealer Performance - Admin | D.G.Yard",
+  description: "View and analyze dealer performance metrics",
+};
+
+export default async function DealerPerformancePage() {
+  const session = await getServerSession(authOptions);
+  
+  if (!session) {
+    redirect("/auth/signin?callbackUrl=/admin/performance/dealers");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { role: true },
+  });
+
+  if (!user || user.role !== "ADMIN") {
+    redirect("/?error=admin-access-denied");
+  }
+
+  return (
+    <AdminLayout>
+      <DealerPerformance />
+    </AdminLayout>
+  );
+}
+

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // GET - Fetch single brand
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,8 +14,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const brand = await prisma.brand.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         products: {
           select: { id: true, name: true },
@@ -40,14 +41,15 @@ export async function GET(
 // PATCH - Update brand
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const { id } = await params;
     
     console.log("PATCH /api/admin/brands/[id] - Session:", session ? "exists" : "null");
     console.log("PATCH /api/admin/brands/[id] - User role:", session?.user?.role);
-    console.log("PATCH /api/admin/brands/[id] - Brand ID:", params.id);
+    console.log("PATCH /api/admin/brands/[id] - Brand ID:", id);
     
     if (!session?.user) {
       console.error("PATCH /api/admin/brands/[id] - No session or user");
@@ -81,7 +83,7 @@ export async function PATCH(
     console.log("PATCH /api/admin/brands/[id] - Updating with:", Object.keys(updateData));
 
     const brand = await prisma.brand.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 
@@ -113,7 +115,7 @@ export async function PATCH(
 // DELETE - Delete brand
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -121,9 +123,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     // Check if brand has products
     const brand = await prisma.brand.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { products: { take: 1 } },
     });
 
@@ -139,7 +142,7 @@ export async function DELETE(
     }
 
     await prisma.brand.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

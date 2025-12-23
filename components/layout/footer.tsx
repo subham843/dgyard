@@ -181,6 +181,18 @@ export function Footer() {
                     Contact
                   </Link>
                 </motion.li>
+                <motion.li
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                >
+                  <Link
+                    href="/cancellation-refund-policy"
+                    className="text-gray-600 font-serif hover:text-gray-900 transition-colors text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-2 group"
+                  >
+                    <span className="w-1 h-1 rounded-full bg-gray-400 group-hover:bg-gray-900 transition-colors" />
+                    Cancellation & Refund Policy
+                  </Link>
+                </motion.li>
               </ul>
             </motion.div>
 
@@ -276,26 +288,34 @@ export function Footer() {
             className="pt-6 sm:pt-8 border-t-2 border-gray-200"
           >
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-              {/* Copyright */}
-              <motion.p
-                whileHover={{ scale: 1.05 }}
-                className="text-gray-600 font-serif text-xs sm:text-sm flex items-center gap-2 text-center sm:text-left"
-              >
-                &copy; {currentYear} {settings?.siteName || "D.G.Yard"}. All rights reserved.
-                <motion.span
-                  animate={{
-                    scale: [1, 1.2, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="inline-flex text-red-500"
+              {/* Copyright and Policy Links */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <motion.p
+                  whileHover={{ scale: 1.05 }}
+                  className="text-gray-600 font-serif text-xs sm:text-sm flex items-center gap-2 text-center sm:text-left"
                 >
-                  <Heart className="w-3 h-3 fill-current" />
-                </motion.span>
-              </motion.p>
+                  &copy; {currentYear} {settings?.siteName || "D.G.Yard"}. All rights reserved.
+                  <motion.span
+                    animate={{
+                      scale: [1, 1.2, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="inline-flex text-red-500"
+                  >
+                    <Heart className="w-3 h-3 fill-current" />
+                  </motion.span>
+                </motion.p>
+                <Link
+                  href="/cancellation-refund-policy"
+                  className="text-gray-600 font-serif hover:text-gray-900 transition-colors text-xs sm:text-sm underline"
+                >
+                  Cancellation & Refund Policy
+                </Link>
+              </div>
 
               {/* Scroll to Top Button */}
               <motion.button

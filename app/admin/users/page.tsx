@@ -1,24 +1,35 @@
 import { Metadata } from "next";
-import { UserManagement } from "@/components/admin/user-management";
 import { AdminLayout } from "@/components/admin/admin-layout";
+import { UserManagementPanel } from "@/components/admin/user-management-panel";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "User Management - Admin",
+  title: "User Management - Admin | D.G.Yard",
+  description: "Manage all users, dealers, technicians, and customers",
 };
 
-export default async function AdminUsersPage() {
+export default async function UserManagementPage() {
   const session = await getServerSession(authOptions);
-  if (!session || session.user?.role !== "ADMIN") {
-    redirect("/");
+  
+  if (!session) {
+    redirect("/auth/signin?callbackUrl=/admin/users");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email || "" },
+    select: { role: true },
+  });
+
+  if (!user || user.role !== "ADMIN") {
+    redirect("/?error=admin-access-denied");
   }
 
   return (
     <AdminLayout>
-      <UserManagement />
+      <UserManagementPanel />
     </AdminLayout>
   );
 }
-

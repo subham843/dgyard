@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { markNotificationAsRead } from "@/lib/notifications";
 
-export async function PATCH(
+export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,7 +16,8 @@ export async function PATCH(
       );
     }
 
-    const result = await markNotificationAsRead(params.id, session.user.id);
+    const { id } = await params;
+    const result = await markNotificationAsRead(id, session.user.id);
 
     if (result.success) {
       return NextResponse.json(result);

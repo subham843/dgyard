@@ -50,4 +50,3 @@ export default async function AdminPage() {
     redirect("/?error=admin-error&message=" + encodeURIComponent(error.message));
   }
 }
-

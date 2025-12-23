@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { UserQuotations } from "@/components/dashboard/user-quotations";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { checkDealerApproval } from "@/lib/dealer-auth";
+import { DealerPendingApproval } from "@/components/dashboard/dealer-pending-approval";
 
 export const metadata: Metadata = {
   title: "My Quotations - D.G.Yard",
@@ -11,10 +11,21 @@ export const metadata: Metadata = {
 };
 
 export default async function QuotationsPage() {
-  // Middleware already protects this route - if we reach here, user is authenticated
-  // Check session for logging only, don't redirect (middleware handles auth)
-  const session = await getServerSession(authOptions);
-  console.log(`[Quotations Page Server] ${new Date().toISOString()} - Session exists: ${!!session}, User ID: ${session?.user?.id}`);
+  // Check if dealer is approved
+  const dealerCheck = await checkDealerApproval();
+
+  // If dealer is not approved, show pending approval message
+  if (dealerCheck && !dealerCheck.isApproved && dealerCheck.accountStatus) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-lavender-soft">
+          <DealerPendingApproval accountStatus={dealerCheck.accountStatus} />
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>

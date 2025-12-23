@@ -17,11 +17,13 @@ export async function GET(request: Request) {
     const unreadOnly = searchParams.get("unreadOnly") === "true";
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const channel = searchParams.get("channel") || undefined; // Optional channel filter
 
     const result = await getUserNotifications(session.user.id, {
       unreadOnly,
       limit,
       offset,
+      channel,
     });
 
     if (result.success) {

@@ -3,9 +3,10 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Package, Calendar, Settings, ShoppingBag, MapPin, User, FileText } from "lucide-react";
+import { Package, Calendar, Settings, ShoppingBag, MapPin, User, FileText, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DealerApprovalStatus } from "./dealer-approval-status";
 
 export function UserDashboard() {
   const { data: session, status } = useSession();
@@ -78,6 +79,13 @@ export function UserDashboard() {
       href: "/bookings",
       color: "bg-green-100 text-green-600",
     },
+    ...(session?.user?.role === "DEALER" ? [{
+      title: "Post Jobs",
+      description: "Post jobs for technicians",
+      icon: Briefcase,
+      href: "/dashboard/jobs",
+      color: "bg-indigo-100 text-indigo-600",
+    }] : []),
     {
       title: "My Addresses",
       description: "Manage delivery addresses",
@@ -109,6 +117,9 @@ export function UserDashboard() {
         </h1>
         <p className="text-light-gray">Manage your account and track your orders</p>
       </div>
+
+      {/* Dealer Approval Status */}
+      <DealerApprovalStatus />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

@@ -68,21 +68,44 @@ export function SignUpForm() {
           
           if (signInResult?.ok) {
             toast.success("Welcome! Redirecting...");
-            // If callbackUrl contains #calculator, scroll to calculator section after redirect
-            if (callbackUrl.includes("#calculator")) {
-              router.push(callbackUrl);
-              router.refresh();
-              // Scroll to calculator section after page loads
-              setTimeout(() => {
-                const calculatorSection = document.getElementById("calculator");
-                if (calculatorSection) {
-                  calculatorSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            
+            // Wait a bit for session to be established, then get user role for redirect
+            setTimeout(async () => {
+              try {
+                const response = await fetch("/api/auth/session");
+                const session = await response.json();
+                const userRole = session?.user?.role;
+                
+                // Role-based redirect
+                let redirectUrl = callbackUrl;
+                if (userRole === "ADMIN") {
+                  redirectUrl = "/admin";
+                } else if (userRole === "TECHNICIAN") {
+                  redirectUrl = "/technician/dashboard";
+                } else if (userRole === "DEALER") {
+                  redirectUrl = "/dealer/dashboard";
                 }
-              }, 500);
-            } else {
-              router.push(callbackUrl);
-              router.refresh();
-            }
+                
+                // If callbackUrl contains #calculator, scroll to calculator section after redirect
+                if (redirectUrl.includes("#calculator")) {
+                  router.push(redirectUrl);
+                  router.refresh();
+                  setTimeout(() => {
+                    const calculatorSection = document.getElementById("calculator");
+                    if (calculatorSection) {
+                      calculatorSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }, 500);
+                } else {
+                  router.push(redirectUrl);
+                  router.refresh();
+                }
+              } catch (error) {
+                console.error("Error getting session:", error);
+                router.push(callbackUrl);
+                router.refresh();
+              }
+            }, 200);
           } else if (signInResult?.error) {
             console.error("Sign in error:", signInResult.error);
             toast.success("Account created! Please sign in.");

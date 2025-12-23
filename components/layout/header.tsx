@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShoppingCart, User, Search, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, ShoppingCart, User, Search, LogOut, ChevronDown, Handshake } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/lib/hooks/use-settings";
 
@@ -234,6 +234,7 @@ export function Header() {
     { href: "/solutions", label: "Solutions" },
     { href: "/quotation", label: "Get Quotation" },
     { href: "/services/book", label: "Book a Service" },
+    { href: "/connect", label: "D.G.Yard Connect", icon: Handshake },
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
   ];
@@ -418,6 +419,7 @@ export function Header() {
             {/* Other Links */}
             {navLinks.slice(2).map((link) => {
               const isActive = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+              const Icon = (link as any).icon;
               return (
                 <Link
                   key={link.href}
@@ -428,7 +430,38 @@ export function Header() {
                     isActive ? "font-semibold" : ""
                   }`}
                 >
-                  <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">{link.label}</span>
+                  <span className="relative z-10 transition-transform duration-300 group-hover:scale-105 flex items-center gap-2">
+                    {Icon && link.href === "/connect" ? (
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.3, 1],
+                          rotate: [0, 5, -5, 0],
+                        }}
+                        transition={{ 
+                          duration: 2.5,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                        className="relative"
+                      >
+                        <motion.div
+                          animate={{
+                            opacity: [0.5, 1, 0.5],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                          className="absolute inset-0 bg-blue-500 rounded-full blur-md"
+                        />
+                        <Icon className="w-4 h-4 text-blue-600 relative z-10" />
+                      </motion.div>
+                    ) : Icon ? (
+                      <Icon className="w-4 h-4" />
+                    ) : null}
+                    {link.label}
+                  </span>
                   {/* Active underline - always visible when active */}
                   <span className={`absolute bottom-0 left-0 right-0 h-0.5 ${navUnderlineClass} transform ${
                     isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
@@ -628,6 +661,7 @@ export function Header() {
               {/* Other Links */}
               {navLinks.slice(2).map((link) => {
                 const isActive = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+                const Icon = (link as any).icon;
                 return (
                   <Link
                     key={link.href}
@@ -646,7 +680,38 @@ export function Header() {
                           : "text-gray-800 hover:text-gray-950 hover:bg-gray-50 hover:border-gray-400 hover:translate-x-1 border-transparent"
                     }`}
                   >
-                    {link.label}
+                    <span className="flex items-center gap-2">
+                      {Icon && link.href === "/connect" ? (
+                        <motion.div
+                          animate={{ 
+                            scale: [1, 1.3, 1],
+                            rotate: [0, 5, -5, 0],
+                          }}
+                          transition={{ 
+                            duration: 2.5,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                          className="relative"
+                        >
+                          <motion.div
+                            animate={{
+                              opacity: [0.5, 1, 0.5],
+                            }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                            className="absolute inset-0 bg-blue-500 rounded-full blur-md"
+                          />
+                          <Icon className="w-4 h-4 text-blue-600 relative z-10" />
+                        </motion.div>
+                      ) : Icon ? (
+                        <Icon className="w-4 h-4" />
+                      ) : null}
+                      {link.label}
+                    </span>
                   </Link>
                 );
               })}

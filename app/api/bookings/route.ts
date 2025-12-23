@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         bookingNumber,
         userId: session.user.id,
         status: "PENDING",
+        bookingPlacedAt: new Date(), // Set booking placed timestamp for cancellation tracking
         aiSuggestedService: data.aiSuggestedService || null,
         aiConfidence: data.aiConfidence || null,
         photos: data.photos || [],

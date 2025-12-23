@@ -16,3 +16,15 @@ export default async function AdminTechniciansPage() {
     </AdminLayout>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+

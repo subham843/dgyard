@@ -28,9 +28,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider
+      basePath="/api/auth"
       refetchInterval={5 * 60} // Refetch session every 5 minutes
-      refetchOnWindowFocus={false} // Don't refetch on focus to avoid unnecessary checks
-      refetchWhenOffline={false}
+      refetchOnWindowFocus={true}
     >
       <QueryClientProvider client={queryClient}>
         <LoadingProvider>

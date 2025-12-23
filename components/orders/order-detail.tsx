@@ -4,6 +4,7 @@ import { formatPrice, formatDate } from "@/lib/utils";
 import { Package, MapPin, Calendar, CreditCard, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { CancellationRefundUI } from "./cancellation-refund-ui";
 
 interface OrderDetailProps {
   order: any;
@@ -146,6 +147,11 @@ export function OrderDetail({ order }: OrderDetailProps) {
                 Pay Now
               </Button>
             )}
+
+            {/* Cancellation & Refund UI */}
+            <div className="mt-6 pt-6 border-t">
+              <CancellationRefundUI order={order} />
+            </div>
           </div>
         </div>
       </div>

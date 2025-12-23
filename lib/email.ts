@@ -1,14 +1,50 @@
 import nodemailer from "nodemailer";
 
-// Create reusable transporter
+// Detect if using Gmail
+const isGmail = !process.env.SMTP_HOST || process.env.SMTP_HOST.includes("gmail.com");
+
+// Detect if using custom SMTP (not Gmail)
+const isCustomSMTP = process.env.SMTP_HOST && !process.env.SMTP_HOST.includes("gmail.com");
+
+// Create reusable transporter with Gmail-specific settings
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: false, // true for 465, false for other ports
+  secure: process.env.SMTP_SECURE === "true" || false, // Use env variable if set
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  // Gmail-specific settings
+  ...(isGmail && {
+    service: "gmail",
+    tls: {
+      rejectUnauthorized: false, // Allow self-signed certificates
+    },
+    // Connection timeout
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  }),
+  // Custom SMTP settings (for mail.dgyard.com etc.)
+  ...(isCustomSMTP && {
+    tls: {
+      rejectUnauthorized: process.env.SMTP_REJECT_UNAUTHORIZED !== "false", // Use env variable
+      // Remove outdated SSLv3, use modern TLS
+      minVersion: "TLSv1.2",
+      maxVersion: "TLSv1.3",
+      // Allow insecure TLS for self-signed certificates
+      servername: process.env.SMTP_HOST,
+    },
+    // Connection timeout for custom SMTP
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+    // Require TLS for custom SMTP (STARTTLS on port 587)
+    requireTLS: true,
+    // Disable SSLv3 and use modern TLS
+    ignoreTLS: false,
+  }),
 });
 
 export interface EmailOptions {
@@ -25,18 +61,225 @@ export async function sendEmail(options: EmailOptions) {
       return { success: false, error: "SMTP not configured" };
     }
 
-    const info = await transporter.sendMail({
-      from: `"D.G.Yard" <${process.env.SMTP_USER}>`,
+    // Check if recipient is Gmail
+    const isGmailRecipient = options.to.toLowerCase().includes("@gmail.com");
+    const isGmailToGmail = isGmail && isGmailRecipient;
+    
+    // Log email sending attempt with details
+    console.log(`📧 Sending email to: ${options.to}`);
+    console.log(`   From: ${process.env.SMTP_USER}`);
+    console.log(`   Subject: ${options.subject}`);
+    console.log(`   Is Gmail Sender: ${isGmail}`);
+    console.log(`   Is Custom SMTP: ${isCustomSMTP}`);
+    console.log(`   Is Gmail Recipient: ${isGmailRecipient}`);
+    console.log(`   Is Gmail-to-Gmail: ${isGmailToGmail}`);
+    console.log(`   SMTP Host: ${process.env.SMTP_HOST || "smtp.gmail.com"}`);
+    console.log(`   SMTP Port: ${process.env.SMTP_PORT || "587"}`);
+    console.log(`   SMTP Secure: ${process.env.SMTP_SECURE || "false"}`);
+    console.log(`   SMTP User: ${process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + "***" : "NOT SET"}`);
+    console.log(`   SMTP Pass: ${process.env.SMTP_PASS ? "***SET***" : "NOT SET"}`);
+    
+    // Warning for custom SMTP to Gmail
+    if (isCustomSMTP && isGmailRecipient) {
+      console.log(`⚠️ WARNING: Sending from custom SMTP (${process.env.SMTP_HOST}) to Gmail recipient`);
+      console.log(`   Gmail may reject emails if SPF/DKIM records are not properly configured for ${process.env.SMTP_USER?.split("@")[1] || "your domain"}`);
+      console.log(`   Check: https://mxtoolbox.com/spf.aspx?domain=${process.env.SMTP_USER?.split("@")[1] || "dgyard.com"}`);
+    }
+    
+    // For Gmail-to-Gmail, skip verification to avoid connection issues
+    // Gmail has stricter spam filters for Gmail-to-Gmail emails
+    if (isGmail && !isGmailToGmail) {
+      try {
+        console.log("🔍 Verifying Gmail SMTP connection...");
+        await transporter.verify();
+        console.log("✅ Gmail SMTP connection verified");
+      } catch (verifyError: any) {
+        console.error("❌ Gmail SMTP verification failed:", verifyError.message);
+        console.error("   Error code:", verifyError.code);
+        // Don't fail immediately - try sending anyway
+        // Verification sometimes fails but sending still works
+      }
+    }
+    
+    if (isGmailToGmail) {
+      console.log("⚠️ Gmail-to-Gmail email detected - using optimized settings");
+      console.log("   Note: Gmail may filter these emails to spam folder");
+    }
+    
+    // CRITICAL: For Gmail, "from" address MUST match the authenticated SMTP_USER
+    // Gmail silently rejects emails if "from" doesn't match authenticated account
+    const fromAddress = process.env.SMTP_USER;
+    if (!fromAddress) {
+      throw new Error("SMTP_USER is not configured");
+    }
+    
+    // Verify "from" matches authenticated user for Gmail
+    if (isGmail) {
+      const fromEmail = fromAddress.includes("<") 
+        ? fromAddress.match(/<(.+)>/)?.[1] || fromAddress
+        : fromAddress;
+      
+      console.log(`   From Address: ${fromEmail}`);
+      console.log(`   Authenticated User: ${process.env.SMTP_USER}`);
+      
+      if (fromEmail.toLowerCase() !== process.env.SMTP_USER.toLowerCase()) {
+        console.error(`⚠️ WARNING: From address (${fromEmail}) doesn't match authenticated user (${process.env.SMTP_USER})`);
+        console.error(`   Gmail will silently reject emails if "from" doesn't match authenticated account`);
+      }
+    }
+    
+    const mailOptions: any = {
+      from: `"D.G.Yard" <${fromAddress}>`, // Must match SMTP_USER exactly
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ""),
-    });
+    };
 
-    return { success: true, messageId: info.messageId };
+    // Add Gmail-specific headers for better deliverability
+    if (isGmailRecipient) {
+      mailOptions.headers = {
+        "X-Priority": "1",
+        "X-MSMail-Priority": "High",
+        "Importance": "high",
+        "List-Unsubscribe": `<mailto:${process.env.SMTP_USER}?subject=unsubscribe>`,
+        // Add domain authentication headers for custom SMTP
+        ...(isCustomSMTP && {
+          "X-Mailer": "D.G.Yard Email System",
+          "Message-ID": `<${Date.now()}-${Math.random().toString(36)}@${process.env.SMTP_USER.split("@")[1] || "dgyard.com"}>`,
+        }),
+      };
+    }
+    
+    // Gmail-to-Gmail specific optimizations
+    if (isGmailToGmail) {
+      // Use simpler email format for Gmail-to-Gmail
+      // Add reply-to to avoid spam filters
+      mailOptions.replyTo = process.env.SMTP_USER;
+      mailOptions.headers = {
+        ...mailOptions.headers,
+        "X-Mailer": "D.G.Yard OTP System",
+        "Precedence": "bulk",
+      };
+      
+      // Ensure text version is clean
+      if (!mailOptions.text) {
+        mailOptions.text = options.html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+      }
+    }
+
+    // For Gmail-to-Gmail, add retry logic
+    let info;
+    let lastError;
+    const maxRetries = isGmailToGmail ? 2 : 1;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (isGmailToGmail && attempt > 1) {
+          console.log(`🔄 Retry attempt ${attempt} for Gmail-to-Gmail email...`);
+          // Small delay before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        info = await transporter.sendMail(mailOptions);
+        
+        // Log detailed response from SMTP server
+        console.log(`✅ Email sent successfully to ${options.to}${isGmailRecipient ? " (Gmail)" : ""}${isGmailToGmail ? " [Gmail-to-Gmail]" : ""}`);
+        console.log(`   Message ID: ${info.messageId}`);
+        console.log(`   SMTP Response: ${info.response || "N/A"}`);
+        console.log(`   Accepted Recipients: ${info.accepted?.length || 0} - ${info.accepted?.join(", ") || "None"}`);
+        console.log(`   Rejected Recipients: ${info.rejected?.length || 0} - ${info.rejected?.join(", ") || "None"}`);
+        console.log(`   Pending Recipients: ${info.pending?.length || 0} - ${info.pending?.join(", ") || "None"}`);
+        
+        // Check if email was actually accepted by SMTP server
+        if (info.rejected && info.rejected.length > 0) {
+          console.error(`⚠️ WARNING: Email was rejected by SMTP server for: ${info.rejected.join(", ")}`);
+          throw new Error(`Email rejected by SMTP server: ${info.response || "Unknown reason"}`);
+        }
+        
+        // For Gmail, check if response indicates success
+        if (isGmail && info.response) {
+          const responseLower = info.response.toLowerCase();
+          if (responseLower.includes("rejected") || responseLower.includes("blocked") || responseLower.includes("denied")) {
+            console.error(`⚠️ WARNING: Gmail may have rejected the email. Response: ${info.response}`);
+            throw new Error(`Gmail rejected email: ${info.response}`);
+          }
+        }
+        
+        return { success: true, messageId: info.messageId };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`❌ Attempt ${attempt} failed for ${options.to}${isGmailToGmail ? " (Gmail-to-Gmail)" : ""}`);
+        console.error(`   Error: ${error.message}`);
+        console.error(`   Error Code: ${error.code || "N/A"}`);
+        console.error(`   Error Command: ${error.command || "N/A"}`);
+        console.error(`   Full Error:`, error);
+        
+        // If it's a connection/auth error, don't retry
+        if (error.code === "EAUTH" || error.code === "ECONNECTION") {
+          console.error("   Stopping retries due to authentication/connection error");
+          break;
+        }
+        
+        // If last attempt, break
+        if (attempt === maxRetries) {
+          console.error("   All retry attempts exhausted");
+          break;
+        }
+      }
+    }
+    
+    // If we get here, all attempts failed
+    throw lastError || new Error("Failed to send email after retries");
   } catch (error: any) {
-    console.error("Error sending email:", error);
-    return { success: false, error: error.message };
+    const isGmailRecipient = options.to.toLowerCase().includes("@gmail.com");
+    const isGmailToGmail = isGmail && isGmailRecipient;
+    
+    console.error(`❌ Error sending email to ${options.to}${isGmailRecipient ? " (Gmail)" : ""}${isGmailToGmail ? " [Gmail-to-Gmail]" : ""}:`, error);
+    
+    // Gmail-specific error messages
+    let errorMessage = error.message;
+    if (isGmail) {
+      if (error.code === "EAUTH") {
+        errorMessage = "Gmail authentication failed. Please use App Password instead of regular password.";
+      } else if (error.code === "ECONNECTION") {
+        errorMessage = "Gmail connection failed. Check your internet connection and SMTP settings.";
+      } else if (error.message.includes("Invalid login")) {
+        errorMessage = "Invalid Gmail credentials. Use App Password from Google Account settings.";
+      } else if (error.message.includes("quota") || error.message.includes("rate limit")) {
+        errorMessage = "Gmail sending quota exceeded. Please try again later.";
+      } else if (isGmailToGmail && error.message.includes("blocked") || error.message.includes("spam")) {
+        errorMessage = "Gmail-to-Gmail email may be blocked by spam filters. Email might be in spam folder.";
+      }
+    }
+    
+    // Custom SMTP SSL/TLS error messages
+    if (isCustomSMTP) {
+      if (error.message?.includes("SSL") || error.message?.includes("TLS") || error.message?.includes("handshake")) {
+        errorMessage = `SSL/TLS handshake failed. Check SMTP configuration:
+- Port 587: Use SMTP_SECURE=false (STARTTLS)
+- Port 465: Use SMTP_SECURE=true (SSL)
+- Verify SMTP_REJECT_UNAUTHORIZED=false if using self-signed certificate`;
+      } else if (error.code === "ECONNECTION") {
+        errorMessage = `Connection to ${process.env.SMTP_HOST} failed. Check:
+- Server is accessible
+- Port ${process.env.SMTP_PORT || "587"} is open
+- Firewall allows outbound connections`;
+      } else if (error.code === "EAUTH") {
+        errorMessage = "SMTP authentication failed. Check SMTP_USER and SMTP_PASS credentials.";
+      }
+    }
+    
+    // Log Gmail-to-Gmail specific troubleshooting
+    if (isGmailToGmail) {
+      console.error("🔧 Gmail-to-Gmail Troubleshooting:");
+      console.error("   1. Check if email is in recipient's spam folder");
+      console.error("   2. Verify SMTP_USER is a verified Gmail account");
+      console.error("   3. Ensure App Password is correctly set");
+      console.error("   4. Gmail has strict spam filters for Gmail-to-Gmail emails");
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 

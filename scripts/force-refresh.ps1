@@ -44,3 +44,15 @@ Write-Host "4. Look for version badge in bottom-right corner (dev mode)" -Foregr
 Write-Host ""
 Write-Host "If you see 'Page v2.0.0-unified-booking' in bottom-right, latest version is loaded!" -ForegroundColor Green
 Write-Host ""
+
+
+
+
+
+
+
+
+
+
+
+

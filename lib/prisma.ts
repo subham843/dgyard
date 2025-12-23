@@ -12,10 +12,5 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// Handle Prisma client errors gracefully
-prisma.$on('error' as never, (e: any) => {
-  console.error('Prisma Client Error:', e);
-});
-
 
 

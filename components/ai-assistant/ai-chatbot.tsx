@@ -1596,7 +1596,9 @@ export function AIChatbot() {
 
       {/* Permission Dialog - Auto-opens when permission denied */}
       <Dialog open={showPermissionDialog} onOpenChange={(open) => {
-        setShowPermissionDialog(open);
+        if (!open) {
+          setShowPermissionDialog(false);
+        }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

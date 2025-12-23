@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { TechnicianDashboard } from "@/components/technician/technician-dashboard";
+import { TechnicianDashboardComplete } from "@/components/technician/technician-dashboard-complete";
+import { TechnicianLayoutNew } from "@/components/technician/technician-layout-new";
 
 export default async function TechnicianDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -11,8 +12,8 @@ export default async function TechnicianDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <TechnicianDashboard />
-    </div>
+    <TechnicianLayoutNew>
+      <TechnicianDashboardComplete />
+    </TechnicianLayoutNew>
   );
 }

@@ -44,6 +44,10 @@ next-env.d.ts
 *.swp
 *.swo
 
+# WhatsApp Web.js auth data
+.wwebjs_auth/
+.wwebjs_cache/
+
 
 
 

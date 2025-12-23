@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Save, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { VoiceSettings } from "@/components/admin/voice-settings";
+import { WhatsAppConnection } from "@/components/admin/whatsapp-connection";
 
 export function SettingsManagement() {
   const [loading, setLoading] = useState(true);
@@ -691,6 +692,11 @@ export function SettingsManagement() {
               toast.success("Voice settings updated! Click 'Save Settings' to save all changes.");
             }}
           />
+        </div>
+
+        {/* WhatsApp Web Connection */}
+        <div className="bg-white rounded-lg border border-lavender-light p-6">
+          <WhatsAppConnection />
         </div>
 
         <div className="flex justify-end">

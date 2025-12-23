@@ -1,9 +1,12 @@
 import { Metadata } from "next";
-import { UserDashboard } from "@/components/dashboard/user-dashboard";
+import { CustomerDashboard } from "@/components/customer/customer-dashboard";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { checkDealerApproval } from "@/lib/dealer-auth";
+import { DealerPendingApproval } from "@/components/dashboard/dealer-pending-approval";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Dashboard - D.G.Yard",
@@ -11,19 +14,39 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  // Middleware already protects this route - if we reach here, user is authenticated
-  // Check session for logging only, don't redirect (middleware handles auth)
   const session = await getServerSession(authOptions);
-  console.log(`[Dashboard Page Server] ${new Date().toISOString()} - Session exists: ${!!session}, User ID: ${session?.user?.id}, Email: ${session?.user?.email}`);
   
-  // If middleware allowed access, session should exist, but don't redirect if it doesn't
-  // Let the client-side component handle the session state
+  // Redirect technicians to their dedicated dashboard
+  if (session?.user?.role === "TECHNICIAN") {
+    redirect("/technician/dashboard");
+  }
+
+  // Redirect dealers to their dedicated dashboard
+  if (session?.user?.role === "DEALER") {
+    redirect("/dealer/dashboard");
+  }
+
+  // Check if dealer is approved
+  const dealerCheck = await checkDealerApproval();
+
+  // If dealer is not approved, show pending approval message
+  if (dealerCheck && !dealerCheck.isApproved && dealerCheck.accountStatus) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-lavender-soft">
+          <DealerPendingApproval accountStatus={dealerCheck.accountStatus} />
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-lavender-soft">
-        <UserDashboard />
+      <main className="min-h-screen bg-gray-50">
+        <CustomerDashboard />
       </main>
       <Footer />
     </>

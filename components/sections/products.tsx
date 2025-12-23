@@ -63,8 +63,9 @@ const ProductImage = ({ src, alt, inView, name }: { src: string; alt: string; in
       className="object-cover group-hover:scale-110 transition-transform duration-300"
       loading="lazy"
       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+      unoptimized={src.startsWith('/uploads')} // Skip optimization for local uploads to prevent 404 errors during optimization
       onError={() => {
-        console.error(`Failed to load image: ${src} for product: ${name}`);
+        // Silently handle image load errors - fallback UI will be shown
         setImageError(true);
       }}
     />

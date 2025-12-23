@@ -37,13 +37,22 @@ export function useSettings() {
 
   useEffect(() => {
     fetch("/api/settings")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setSettings(data.settings || null);
         setLoading(false);
       })
       .catch((error) => {
-        console.error("Error fetching settings:", error);
+        // Silently handle network errors - they're common during development
+        // Only log if it's not a network error (Failed to fetch)
+        if (error?.message && !error.message.includes("Failed to fetch")) {
+          console.warn("Error fetching settings:", error.message);
+        }
         setSettings(null);
         setLoading(false);
       });

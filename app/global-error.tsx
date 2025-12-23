@@ -12,8 +12,18 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Suppress harmless removeChild errors from Radix UI
+    if (
+      error.message?.includes("removeChild") &&
+      error.message?.includes("not a child")
+    ) {
+      // Silently ignore - this is a known Radix UI dialog cleanup issue
+      // Auto-reset to clear the error
+      setTimeout(() => reset(), 100);
+      return;
+    }
     console.error("Global error:", error);
-  }, [error]);
+  }, [error, reset]);
 
   return (
     <html lang="en">

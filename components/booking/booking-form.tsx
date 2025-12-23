@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { InlineAIHelper } from "@/components/ai-assistant/inline-ai-helper";
+import Link from "next/link";
 
 const serviceTypes = [
   { value: "INSTALLATION", label: "Installation Services", icon: Wrench, description: "CCTV, networking, AV systems installation" },
@@ -156,8 +157,27 @@ export function BookingForm({ defaultServiceType, quotationId, onSuccess, compac
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-serif font-bold mb-2">Book a Service</h1>
-        <p className="text-gray-600 mb-8">Fill in the details below to book your service</p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-serif font-bold mb-2">Book a Service</h1>
+          <p className="text-gray-600 mb-4">Fill in the details below to book your service</p>
+          {defaultServiceType === "INSTALLATION" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 mb-1">Need CCTV Installation?</h3>
+                  <p className="text-sm text-blue-800 mb-3">
+                    Get an instant price estimation with our CCTV calculator and auto quotation system.
+                  </p>
+                  <Link href="/services/cctv-estimation">
+                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                      Get CCTV Estimation →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* AI Helper */}
         <InlineAIHelper

@@ -36,22 +36,24 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with TECHNICIAN role
+    // Create user with TECHNICIAN role (credentials only)
     const user = await prisma.user.create({
       data: {
-        name,
         email,
-        phone,
         password: hashedPassword,
         role: "TECHNICIAN",
         phoneVerified: false, // Can be verified later
+        // Note: name and phone are stored in Technician model, not User model
       },
     });
 
-    // Create technician profile
+    // Create technician profile (all technician-specific data)
     const technician = await prisma.technician.create({
       data: {
         userId: user.id,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         employeeId: employeeId || null,
         specialization: specialization || [],
         experience: experience ? parseInt(experience) : null,

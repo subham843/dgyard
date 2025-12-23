@@ -17,11 +17,11 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const active = searchParams.get("active");
+    const status = searchParams.get("status");
 
     const where: any = {};
-    if (active !== null) {
-      where.active = active === "true";
+    if (status && status !== "all") {
+      where.accountStatus = status;
     }
 
     const technicians = await prisma.technician.findMany({
@@ -30,11 +30,13 @@ export async function GET(request: Request) {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
             phone: true,
             phoneVerified: true,
+            emailVerified: true,
             createdAt: true,
+            role: true,
+            name: true,
           },
         },
       },
@@ -90,13 +92,12 @@ export async function POST(request: Request) {
         );
       }
 
-      // Create new user
+      // Create new user (credentials only)
       const newUser = await prisma.user.create({
         data: {
-          name,
           email,
-          phone,
           role: "TECHNICIAN",
+          // Note: name and phone are stored in Technician model
         },
       });
 
@@ -135,10 +136,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create technician profile
+    // Create technician profile (all technician-specific data)
     const technician = await prisma.technician.create({
       data: {
         userId: targetUserId,
+        name: name?.trim() || null,
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
         employeeId: employeeId || null,
         specialization: specialization || [],
         experience: experience ? parseInt(experience) : null,
@@ -151,9 +155,9 @@ export async function POST(request: Request) {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
-            phone: true,
+            role: true,
+            // Note: name and phone are stored in Technician model
           },
         },
       },

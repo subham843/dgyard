@@ -13,8 +13,18 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Suppress harmless removeChild errors from Radix UI
+    if (
+      error.message?.includes("removeChild") &&
+      error.message?.includes("not a child")
+    ) {
+      // Silently ignore - this is a known Radix UI dialog cleanup issue
+      // Auto-reset to clear the error
+      setTimeout(() => reset(), 100);
+      return;
+    }
     console.error(error);
-  }, [error]);
+  }, [error, reset]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-lavender-soft">

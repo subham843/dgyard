@@ -21,6 +21,82 @@ interface Category {
   slug: string;
 }
 
+// Product Image Component with proper error handling
+const ProductImage = ({ 
+  src, 
+  alt, 
+  fill = false, 
+  width, 
+  height, 
+  className = "",
+  sizes
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  fill?: boolean;
+  width?: number;
+  height?: number;
+  className?: string;
+  sizes?: string;
+}) => {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false); // Reset error when src changes
+  }, [src]);
+
+  if (!src || imageError) {
+    if (fill) {
+      return (
+        <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
+          <Camera className="w-12 h-12 text-gray-300" />
+        </div>
+      );
+    }
+    return (
+      <div className={`flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 ${className}`} style={{ width, height }}>
+        <Camera className="w-12 h-12 text-gray-300" />
+      </div>
+    );
+  }
+
+  // Check if this is a local upload path that might not exist
+  const isLocalUpload = src && src.startsWith('/uploads');
+  
+  if (fill) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className={className}
+        loading="lazy"
+        sizes={sizes || "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"}
+        unoptimized={isLocalUpload} // Skip optimization for local uploads to prevent 404 errors
+        onError={() => {
+          setImageError(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      loading="lazy"
+      sizes={sizes || "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"}
+      unoptimized={isLocalUpload} // Skip optimization for local uploads to prevent 404 errors
+      onError={() => {
+        setImageError(true);
+      }}
+    />
+  );
+};
+
 export function ProductListing() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -766,23 +842,13 @@ export function ProductListing() {
 
                     {/* Product Image */}
                     <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                          loading="lazy"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                          <Camera className="w-20 h-20 text-gray-300" />
-                  </div>
-                      )}
+                      <ProductImage
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
                       
                       {/* Discount Badge */}
                   {product.comparePrice && (
@@ -910,23 +976,13 @@ export function ProductListing() {
                   <div className="bg-white rounded-xl p-6 border-2 border-gray-200 hover:border-gray-900 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row gap-6 hover:-translate-y-1">
                     {/* Product Image */}
                     <div className="relative w-full md:w-48 h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                          loading="lazy"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                  <Camera className="w-16 h-16 text-gray-300" />
-                </div>
-                      )}
+                      <ProductImage
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
                     </div>
 
                     {/* Product Info */}
@@ -1058,19 +1114,14 @@ export function ProductListing() {
                 <Link key={product.id} href={`/products/${product.id}`}>
                   <div className="bg-white rounded-lg border-2 border-purple-200 hover:border-purple-400 p-4 transition-all hover:shadow-lg">
                     <div className="aspect-square bg-gray-50 rounded-lg mb-3 flex items-center justify-center">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          width={100}
-                          height={100}
-                          className="object-contain"
-                          loading="lazy"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <Camera className="w-12 h-12 text-gray-300" />
-                      )}
+                      <ProductImage
+                        src={product.image}
+                        alt={product.name}
+                        width={100}
+                        height={100}
+                        className="object-contain"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
                     </div>
                     <h4 className="text-sm font-serif font-semibold text-gray-900 line-clamp-2 mb-2">{product.name}</h4>
                     <p className="text-lg font-serif font-bold text-gray-900">{formatPrice(product.price)}</p>
@@ -1099,19 +1150,14 @@ export function ProductListing() {
                 <Link key={product.id} href={`/products/${product.id}`}>
                   <div className="bg-white rounded-lg border-2 border-gray-200 hover:border-gray-900 p-4 transition-all hover:shadow-lg">
                     <div className="aspect-square bg-gray-50 rounded-lg mb-3 flex items-center justify-center">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          width={100}
-                          height={100}
-                          className="object-contain"
-                          loading="lazy"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <Camera className="w-12 h-12 text-gray-300" />
-                      )}
+                      <ProductImage
+                        src={product.image}
+                        alt={product.name}
+                        width={100}
+                        height={100}
+                        className="object-contain"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
                     </div>
                     <h4 className="text-sm font-serif font-semibold text-gray-900 line-clamp-2 mb-2">{product.name}</h4>
                     <p className="text-lg font-serif font-bold text-gray-900">{formatPrice(product.price)}</p>
@@ -1176,17 +1222,14 @@ export function ProductListing() {
                         {products.filter(p => comparedProducts.includes(p.id)).map((product) => (
                           <th key={product.id} className="text-center p-4 font-serif font-semibold text-gray-900 min-w-[200px]">
                             <div className="flex flex-col items-center gap-2">
-                              {product.image && (
-                                <Image
-                                  src={product.image}
-                                  alt={product.name}
-                                  width={80}
-                                  height={80}
-                                  className="object-contain"
-                                  loading="lazy"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                />
-                              )}
+                              <ProductImage
+                                src={product.image}
+                                alt={product.name}
+                                width={80}
+                                height={80}
+                                className="object-contain"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              />
                               <span>{product.name}</span>
                               <Button
                                 size="sm"

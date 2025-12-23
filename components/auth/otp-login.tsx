@@ -82,10 +82,29 @@ export function OTPLogin() {
           toast.success("Login successful!");
           console.log(`[OTP Login] NextAuth sign in successful, redirecting...`);
           
-          // Wait a bit for session to be established
-          setTimeout(() => {
-            console.log(`[OTP Login] Redirecting to dashboard`);
-            window.location.href = "/dashboard";
+          // Wait a bit for session to be established, then get user role for redirect
+          setTimeout(async () => {
+            try {
+              const response = await fetch("/api/auth/session");
+              const session = await response.json();
+              const userRole = session?.user?.role;
+              
+              // Role-based redirect
+              let redirectUrl = "/dashboard";
+              if (userRole === "ADMIN") {
+                redirectUrl = "/admin";
+              } else if (userRole === "TECHNICIAN") {
+                redirectUrl = "/technician/dashboard";
+              } else if (userRole === "DEALER") {
+                redirectUrl = "/dealer/dashboard";
+              }
+              
+              console.log(`[OTP Login] Redirecting to: ${redirectUrl} (Role: ${userRole})`);
+              window.location.href = redirectUrl;
+            } catch (error) {
+              console.error("Error getting session:", error);
+              window.location.href = "/dashboard";
+            }
           }, 200);
         } else {
           console.log(`[OTP Login] ⚠️ NextAuth sign in failed:`, result?.error);

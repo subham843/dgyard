@@ -108,6 +108,103 @@ export function createAuthErrorResponse(
   );
 }
 
+/**
+ * Helper function for route handlers to get authenticated session
+ * Returns session or null, and handles errors gracefully
+ * For NextAuth v4 with App Router
+ */
+export async function getAuthenticatedSession() {
+  try {
+    const session = await getServerSession(authOptions);
+    return session;
+  } catch (error) {
+    console.error("Error getting session:", error);
+    return null;
+  }
+}
+
+/**
+ * Helper function for route handlers to require authentication
+ * Returns session or NextResponse with 401 error
+ * For NextAuth v4 with App Router
+ */
+export async function requireAuth(): Promise<
+  | { session: Awaited<ReturnType<typeof getServerSession>>; error: null }
+  | { session: null; error: NextResponse }
+> {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return {
+      session: null,
+      error: NextResponse.json(
+        { error: "Unauthorized", message: "Authentication required" },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return { session, error: null };
+}
+
+/**
+ * Helper function for route handlers to require specific role
+ * Returns session or NextResponse with 403 error
+ * For NextAuth v4 with App Router
+ */
+export async function requireRole(
+  allowedRoles: string[]
+): Promise<
+  | { session: Awaited<ReturnType<typeof getServerSession>>; error: null }
+  | { session: null; error: NextResponse }
+> {
+  const authResult = await requireAuth();
+  if (authResult.error) {
+    return authResult;
+  }
+
+  const session = authResult.session;
+  const userRole = session?.user?.role;
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    return {
+      session: null,
+      error: NextResponse.json(
+        {
+          error: "Forbidden",
+          message: `Access denied. Required role: ${allowedRoles.join(", ")}`,
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { session, error: null };
+}
+
+/**
+ * Helper function for route handlers to require admin role
+ * Returns session or NextResponse with 403 error
+ * For NextAuth v4 with App Router
+ */
+export async function requireAdmin(): Promise<
+  | { session: Awaited<ReturnType<typeof getServerSession>>; error: null }
+  | { session: null; error: NextResponse }
+> {
+  return requireRole(["ADMIN"]);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
