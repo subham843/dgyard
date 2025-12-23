@@ -247,16 +247,25 @@ export async function GET(
 
     // Filter technician information based on payment status and role
     const filteredBids = bids.map((bid: any) => {
+      if (!bid.technician) {
+        // If technician is null, return bid with minimal info
+        return {
+          ...bid,
+          technician: null,
+        };
+      }
+
       let technicianInfo: any = {
         id: bid.technician.id,
-        rating: bid.technicianRating || bid.technician.rating,
+        rating: bid.technicianRating || bid.technician.rating || 0,
       };
 
       if (session.user.role === "DEALER") {
         // For dealers, use privacy filter to hide contact info before payment
+        const filteredInfo = filterTechnicianInfoForDealer(bid.technician, paymentLocked);
         technicianInfo = {
           ...technicianInfo,
-          ...filterTechnicianInfoForDealer(bid.technician, paymentLocked),
+          ...(filteredInfo || {}), // Ensure we always have an object
         };
       } else {
         // For technicians viewing their own bids, show all info
@@ -265,7 +274,7 @@ export async function GET(
           fullName: bid.technician.fullName,
           mobile: bid.technician.mobile,
           email: bid.technician.email,
-          rating: bid.technicianRating || bid.technician.rating,
+          rating: bid.technicianRating || bid.technician.rating || 0,
         };
       }
 

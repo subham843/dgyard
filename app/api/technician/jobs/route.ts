@@ -29,18 +29,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50");
     const status = searchParams.get("status");
+    const includeBids = searchParams.get("includeBids") !== "false"; // Default true
 
     // Get jobs assigned to this technician
-    const where: any = {
+    const assignedJobsWhere: any = {
       assignedTechnicianId: technician.id,
     };
 
     if (status) {
-      where.status = status;
+      assignedJobsWhere.status = status;
     }
 
-    const jobs = await prisma.jobPost.findMany({
-      where,
+    const assignedJobs = await prisma.jobPost.findMany({
+      where: assignedJobsWhere,
       include: {
         dealer: {
           include: {
@@ -57,7 +58,50 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    const formattedJobs = jobs.map((job) => ({
+    // Also get jobs where technician has placed bids (if includeBids is true)
+    let jobsWithBids: any[] = [];
+    if (includeBids) {
+      const bids = await prisma.jobBid.findMany({
+        where: {
+          technicianId: technician.id,
+          status: { in: ["PENDING", "COUNTERED", "ACCEPTED"] }, // Only active bids
+        },
+        include: {
+          job: {
+            include: {
+              dealer: {
+                include: {
+                  dealer: {
+                    select: {
+                      businessName: true,
+                      fullName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Filter out jobs that are already in assignedJobs
+      const assignedJobIds = new Set(assignedJobs.map(j => j.id));
+      jobsWithBids = bids
+        .map(bid => bid.job)
+        .filter(job => !assignedJobIds.has(job.id))
+        .map(job => ({
+          ...job,
+          bidStatus: bids.find(b => b.jobId === job.id)?.status || "PENDING",
+          bidId: bids.find(b => b.jobId === job.id)?.id,
+          bidPrice: bids.find(b => b.jobId === job.id)?.offeredPrice,
+        }));
+    }
+
+    // Combine assigned jobs and jobs with bids
+    const allJobs = [...assignedJobs, ...jobsWithBids];
+
+    const formattedJobs = allJobs.map((job: any) => ({
       id: job.id,
       jobNumber: job.jobNumber,
       title: job.title || job.jobNumber,
@@ -75,6 +119,12 @@ export async function GET(request: NextRequest) {
       scheduledAt: job.scheduledAt?.toISOString(),
       amount: job.finalPrice || job.estimatedCost,
       warrantyDays: job.warrantyDays,
+      // Add bid information if this job has a bid
+      hasBid: !!job.bidId,
+      bidStatus: job.bidStatus,
+      bidId: job.bidId,
+      bidPrice: job.bidPrice,
+      isAssigned: !!job.assignedTechnicianId && job.assignedTechnicianId === technician.id,
     }));
 
     return NextResponse.json({ jobs: formattedJobs });

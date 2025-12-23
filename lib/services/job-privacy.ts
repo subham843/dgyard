@@ -107,9 +107,11 @@ export function filterTechnicianInfoForDealer(
       rating: technician?.rating,
     };
   } else {
-    // Before payment: Show only name and service location
+    // Before payment: Show name, service location, and rating (for bid evaluation)
+    // But NOT contact details (email, mobile)
     return {
       fullName: technician?.fullName,
+      rating: technician?.rating,
       serviceArea: {
         placeName: technician?.placeName,
         serviceRadiusKm: technician?.serviceRadiusKm,

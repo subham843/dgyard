@@ -18,6 +18,7 @@ export function JobBiddingPanel({
   const [bids, setBids] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [counterOffer, setCounterOffer] = useState<{ [key: string]: string }>({});
+  const [paymentLocked, setPaymentLocked] = useState(job.paymentLocked || false);
 
   useEffect(() => {
     fetchBids();
@@ -29,6 +30,12 @@ export function JobBiddingPanel({
       if (response.ok) {
         const data = await response.json();
         setBids(data.bids || []);
+        
+        // Also check payment status
+        const paymentResponse = await fetch(`/api/jobs/${job.id}/payment-split`);
+        if (paymentResponse.ok) {
+          setPaymentLocked(true);
+        }
       }
     } catch (error) {
       console.error("Error fetching bids:", error);
@@ -166,11 +173,13 @@ export function JobBiddingPanel({
                             Technician
                           </h3>
                         )}
-                        {/* Only show rating after payment */}
-                        {job.paymentLocked && (
+                        {/* Show rating always (needed for bid evaluation) */}
+                        {(bid.technicianRating || bid.technician?.rating) && (
                           <div className="flex items-center gap-1">
                             <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                            <span className="text-sm font-medium">{bid.technicianRating || bid.technician?.rating ? (bid.technicianRating || bid.technician.rating).toFixed(1) : "N/A"}</span>
+                            <span className="text-sm font-medium">
+                              {(bid.technicianRating || bid.technician.rating).toFixed(1)}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -196,7 +205,7 @@ export function JobBiddingPanel({
                           <span>Round: {bid.roundNumber}</span>
                         </div>
                         {/* Other details - only after payment */}
-                        {job.paymentLocked && (
+                        {paymentLocked && (
                           <>
                             {bid.technician.trustScore !== undefined && (
                               <div className="text-xs text-gray-500">
@@ -215,7 +224,7 @@ export function JobBiddingPanel({
                           </>
                         )}
                         {/* Show message if payment not locked */}
-                        {!job.paymentLocked && (
+                        {!paymentLocked && (
                           <div className="text-xs text-orange-600 mt-2">
                             <AlertCircle className="w-3 h-3 inline mr-1" />
                             Complete payment to view full technician details
@@ -225,13 +234,23 @@ export function JobBiddingPanel({
                     </>
                   ) : (
                     <div className="text-sm text-gray-500">
-                      <p>Technician details will be available after payment is locked</p>
+                      <p className="font-semibold mb-2">Technician Information</p>
                       {bid.distanceKm && (
-                        <div className="flex items-center gap-1 mt-2">
+                        <div className="flex items-center gap-1 mb-2">
                           <MapPin className="w-4 h-4" />
                           <span>{bid.distanceKm.toFixed(1)} km away</span>
                         </div>
                       )}
+                      {bid.technicianRating && (
+                        <div className="flex items-center gap-1 mb-2">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span>Rating: {bid.technicianRating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-orange-600 mt-2">
+                        <AlertCircle className="w-3 h-3 inline mr-1" />
+                        Full technician details will be available after payment is locked
+                      </p>
                     </div>
                   )}
                 </div>
@@ -261,7 +280,7 @@ export function JobBiddingPanel({
                       <CheckCircle2 className="w-4 h-4 mr-2" />
                       Accept
                     </Button>
-                    {job.negotiationRounds < 2 && (
+                    {(job.negotiationRounds || 0) < 2 && (
                       <div className="flex gap-2">
                         <Input
                           type="number"

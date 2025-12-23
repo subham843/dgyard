@@ -38,12 +38,18 @@ interface MyJob {
     businessName: string;
     fullName?: string;
   };
+  hasBid?: boolean;
+  bidStatus?: string;
+  bidId?: string;
+  bidPrice?: number;
+  isAssigned?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   ASSIGNED: { label: "Assigned", color: "bg-blue-100 text-blue-800", icon: Briefcase },
   IN_PROGRESS: { label: "In Progress", color: "bg-purple-100 text-purple-800", icon: PlayCircle },
   PENDING: { label: "Pending", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+  NEGOTIATION_PENDING: { label: "Bid Pending", color: "bg-orange-100 text-orange-800", icon: Clock },
   WAITING_FOR_PAYMENT: { label: "Waiting for Payment", color: "bg-orange-100 text-orange-800", icon: DollarSign },
   COMPLETION_PENDING_APPROVAL: { label: "Pending Approval", color: "bg-indigo-100 text-indigo-800", icon: AlertCircle },
 };
@@ -66,8 +72,8 @@ export function MyJobsPage() {
   const fetchMyJobs = async () => {
     try {
       setLoading(true);
-      // Fetch all jobs assigned to technician (excluding completed ones)
-      const response = await fetch("/api/technician/jobs");
+      // Fetch all jobs assigned to technician AND jobs with bids (excluding completed ones)
+      const response = await fetch("/api/technician/jobs?includeBids=true");
       if (response.ok) {
         const data = await response.json();
         // Filter out completed jobs for "My Jobs" page
@@ -242,6 +248,14 @@ export function MyJobsPage() {
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {statusInfo.label}
                         </Badge>
+                        {job.hasBid && !job.isAssigned && (
+                          <Badge className="bg-green-100 text-green-800">
+                            Bid: {job.bidStatus === "PENDING" ? "Pending" : 
+                                  job.bidStatus === "COUNTERED" ? "Countered" :
+                                  job.bidStatus === "ACCEPTED" ? "Accepted" : job.bidStatus}
+                            {job.bidPrice && ` (₹${job.bidPrice.toLocaleString('en-IN')})`}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -284,11 +298,20 @@ export function MyJobsPage() {
                       >
                         View Details
                       </Button>
-                      {job.status === "ASSIGNED" && (
+                      {job.status === "ASSIGNED" && job.isAssigned && (
                         <Button
                           onClick={() => window.location.href = `/technician/jobs/${job.id}?action=start`}
                         >
                           Start Job
+                        </Button>
+                      )}
+                      {job.hasBid && !job.isAssigned && (
+                        <Button
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                          onClick={() => window.location.href = `/technician/jobs/${job.id}`}
+                        >
+                          View Bid Status
                         </Button>
                       )}
                     </div>

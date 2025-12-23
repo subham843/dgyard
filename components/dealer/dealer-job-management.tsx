@@ -17,12 +17,17 @@ interface DealerJobManagementProps {
 
 const jobStatusColors = {
   PENDING: "bg-yellow-100 text-yellow-800",
+  JOB_BROADCASTED: "bg-blue-100 text-blue-800",
+  NEGOTIATION_PENDING: "bg-orange-100 text-orange-800",
+  SOFT_LOCKED: "bg-purple-100 text-purple-800",
   APPROVED: "bg-blue-100 text-blue-800",
   WAITING_FOR_PAYMENT: "bg-orange-100 text-orange-800",
+  PAYMENT_LOCKED: "bg-indigo-100 text-indigo-800",
   ASSIGNED: "bg-indigo-100 text-indigo-800",
   IN_PROGRESS: "bg-purple-100 text-purple-800",
   COMPLETED: "bg-green-100 text-green-800",
   CANCELLED: "bg-red-100 text-red-800",
+  REJECTED: "bg-red-100 text-red-800",
   DISPUTED: "bg-orange-100 text-orange-800",
 };
 
@@ -280,9 +285,13 @@ export function DealerJobManagement({ onStatsUpdate, onNavigateToPostJob }: Deal
 
   const statusCounts = {
     all: jobs.length,
+    JOB_BROADCASTED: jobs.filter(j => j.status === "JOB_BROADCASTED").length,
     PENDING: jobs.filter(j => j.status === "PENDING").length,
+    NEGOTIATION_PENDING: jobs.filter(j => j.status === "NEGOTIATION_PENDING").length,
+    SOFT_LOCKED: jobs.filter(j => j.status === "SOFT_LOCKED").length,
     APPROVED: jobs.filter(j => j.status === "APPROVED").length,
     WAITING_FOR_PAYMENT: jobs.filter(j => j.status === "WAITING_FOR_PAYMENT").length,
+    PAYMENT_LOCKED: jobs.filter(j => j.status === "PAYMENT_LOCKED").length,
     ASSIGNED: jobs.filter(j => j.status === "ASSIGNED").length,
     IN_PROGRESS: jobs.filter(j => j.status === "IN_PROGRESS").length,
     COMPLETED: jobs.filter(j => j.status === "COMPLETED").length,
@@ -518,17 +527,17 @@ export function DealerJobManagement({ onStatsUpdate, onNavigateToPostJob }: Deal
                 </div>
 
                 <div className="flex flex-col gap-2 lg:items-end">
-                  {job.status === "PENDING" && job.bids && job.bids.length > 0 && (
+                  {/* Show bid button for jobs with bids in these statuses */}
+                  {["PENDING", "JOB_BROADCASTED", "NEGOTIATION_PENDING"].includes(job.status) && 
+                   job.bids && job.bids.length > 0 && (
                     <Button
                       onClick={() => {
-                        // Extra safety: Ensure technician is null when payment not locked
+                        // Don't filter technician info from bids - show basic info even before payment
                         const safeJob = {
                           ...job,
                           technician: job.paymentLocked ? job.technician : null,
-                          bids: job.bids?.map((bid: any) => ({
-                            ...bid,
-                            technician: job.paymentLocked ? bid.technician : null,
-                          })) || [],
+                          // Keep bid technician info - it's filtered by API based on privacy rules
+                          bids: job.bids || [],
                         };
                         setSelectedJob(safeJob);
                         setShowBids(true);
