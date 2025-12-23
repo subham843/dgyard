@@ -85,21 +85,57 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
 
-      // Filter out jobs that are already in assignedJobs
+      // Get bid information for all jobs (including assigned ones)
+      const bidMap = new Map();
+      bids.forEach(bid => {
+        if (bid.job) {
+          bidMap.set(bid.job.id, {
+            bidStatus: bid.status,
+            bidId: bid.id,
+            bidPrice: bid.offeredPrice,
+          });
+        }
+      });
+
+      // Add bid info to assigned jobs if they have bids
+      assignedJobs.forEach(job => {
+        const bidInfo = bidMap.get(job.id);
+        if (bidInfo) {
+          job.bidStatus = bidInfo.bidStatus;
+          job.bidId = bidInfo.bidId;
+          job.bidPrice = bidInfo.bidPrice;
+        }
+      });
+
+      // Get jobs with bids that are NOT assigned
       const assignedJobIds = new Set(assignedJobs.map(j => j.id));
       jobsWithBids = bids
         .map(bid => bid.job)
-        .filter(job => !assignedJobIds.has(job.id))
+        .filter(job => job && !assignedJobIds.has(job.id))
         .map(job => ({
           ...job,
-          bidStatus: bids.find(b => b.jobId === job.id)?.status || "PENDING",
-          bidId: bids.find(b => b.jobId === job.id)?.id,
-          bidPrice: bids.find(b => b.jobId === job.id)?.offeredPrice,
+          bidStatus: bidMap.get(job.id)?.bidStatus || "PENDING",
+          bidId: bidMap.get(job.id)?.bidId,
+          bidPrice: bidMap.get(job.id)?.bidPrice,
         }));
     }
 
-    // Combine assigned jobs and jobs with bids
-    const allJobs = [...assignedJobs, ...jobsWithBids];
+    // Combine assigned jobs and jobs with bids (deduplicate by ID)
+    const jobMap = new Map();
+    
+    // First add assigned jobs
+    assignedJobs.forEach(job => {
+      jobMap.set(job.id, job);
+    });
+    
+    // Then add jobs with bids (won't overwrite assigned jobs)
+    jobsWithBids.forEach(job => {
+      if (!jobMap.has(job.id)) {
+        jobMap.set(job.id, job);
+      }
+    });
+    
+    const allJobs = Array.from(jobMap.values());
 
     const formattedJobs = allJobs.map((job: any) => ({
       id: job.id,
